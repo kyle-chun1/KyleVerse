@@ -23,17 +23,31 @@ jobs:
     permissions:
       contents: write
       pages: write
+      actions: read
     steps:
-      - name: Check out current main
+      - name: Check out publication revision
         uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install curation and email packages
+        run: Rscript -e 'install.packages(c("jsonlite", "curl")); stopifnot(requireNamespace("jsonlite"), requireNamespace("curl"))'
+
+      - name: Validate curation and test the review workflow
+        run: |
+          Rscript scripts/curation.R validate
+          Rscript tests/test_curation.R
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
@@ -97,3 +111,14 @@ jobs:
           done
           echo "::error::Timed out waiting for GitHub Pages to publish this commit."
           exit 1
+
+      # Successful-run history is the receipt: failed mail is retried next run.
+      - name: Email on a published reading-book change
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KYLEVERSE_NOTIFICATION_EMAIL: ${{ secrets.KYLEVERSE_NOTIFICATION_EMAIL }}
+          GMAIL_SMTP_USER: ${{ secrets.GMAIL_SMTP_USER }}
+          GMAIL_SMTP_APP_PASSWORD: ${{ secrets.GMAIL_SMTP_APP_PASSWORD }}
+          READING_CURRENT_SHA: ${{ github.sha }}
+          READING_PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: Rscript scripts/reading_email.R --send

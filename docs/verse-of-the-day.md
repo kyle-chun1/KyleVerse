@@ -1,36 +1,163 @@
 # Verse of the Day
 
-## Edit the book once
+## Prepare one new book
 
-Change `current-bible-book: "Isaiah"` in the YAML at the top of `index.qmd`.
-The On my heart card uses `{{< meta current-bible-book >}}`, and the retrieval
-script reads that same field. Use the full book names listed in
-`data/curated-passages.json` (for example, `Psalms`, `1 Corinthians`).
-Do not replace the shortcode with a second hard-coded name.
+Ask Codex: **“Help me prepare a curated passage list for Romans.”** Repository
+instructions in `AGENTS.md` make Codex inspect the collection first, suggest
+approximately 10–15 meaningful references with speaker/audience/context notes,
+and import them as **suggested**, never approved. No Scripture text is generated
+or stored. Preparing a book does not change your current reading or send email.
+Only the requested book is prepared; other collections remain untouched.
 
-## Review the passage list
+All collections remain in `data/curated-passages.json`, keyed by book. Entries
+retain `reference` and `context`, with optional `theme`, a `status` of `suggested`,
+`approved`, or `rejected`, and approval provenance when applicable. No entry is
+deleted when rejected or when you leave a book. The six previously active Isaiah
+entries retain `existing-active-collection` provenance; this migration does not
+claim a new personal review. Future imports always start unapproved.
 
-`data/curated-passages.json` has an explicit list for every book. Isaiah starts
-with six selections (ten distinct verses); the other books deliberately have
-empty lists. A missing/empty list displays unavailable, without an API request.
-Add entries only after reviewing them in their full chapter:
+New R tools require `jsonlite`; email additionally uses `curl`:
 
-```json
-{"reference": "Isaiah 40:28-29", "context": "A complete description of the Creator and his care for the weary, in comfort addressed to Israel."}
+```r
+install.packages(c("jsonlite", "curl"))
 ```
 
-Use whole verses, one chapter, and one to three verses per entry. Keep a context
-note explaining the speaker, audience, and why the passage can stand alone.
-Avoid applying promises to a different audience, removing conditions, or
-isolating pronouns without their referent. These editorial notes are not
-Scripture and are not added to the quotation. Only Crossway supplies verse text.
-Do not add verse text to the catalog, source pages, or tests.
+Run commands from the repository root. To import Codex’s reviewable JSON draft:
 
-The deterministic index is `(New York date - 2026-01-01).days % passage_count`.
-Consecutive days move through the list in order and repeat after its end;
-rebuilding on the same day selects the same passage unless you edit the list.
-Ordering or changing the list intentionally changes the rotation. The API's
-canonical reference is displayed unchanged (including Psalm/Psalms naming).
+```sh
+Rscript scripts/curation.R prepare Romans /path/to/romans-candidates.json
+Rscript scripts/curation.R show Romans
+```
+
+A draft is an array of objects with `reference`, `context`, and optional `theme`.
+Do not include status, approval metadata, or Scripture text. Use 1–3 whole verses
+in one chapter. The importer normalizes reference dashes, rejects malformed or
+duplicate ranges (including alternate dash spelling), appends without replacing
+existing entries, and validates the full batch before writing. Actual canonical
+book/chapter/verse existence remains verified against the ESV API at publication.
+The JSON file and `show` output let you inspect and edit every contextual note.
+
+## Approve or reject after reviewing Scripture
+
+Read each passage in its full chapter, checking speaker, audience, conditions,
+and surrounding argument. Then explicitly tell Codex which references you
+approve, or run the equivalent command yourself:
+
+```sh
+Rscript scripts/curation.R approve Romans "Romans 8:38-39" --confirm-reviewed
+Rscript scripts/curation.R reject Romans "Romans 12:9-11"
+```
+
+Approval requires the explicit confirmation flag and records a review timestamp
+and `user-confirmed` provenance. Notes and themes are preserved. Rejection keeps
+the reference and notes but excludes it from selection. Rejecting the last
+approved passage makes the card unavailable. Missing statuses never count as
+approval. Do not toggle approval fields merely to bypass the review step.
+
+## Add a reference later
+
+Ask: **“Add Romans 8:38–39 to my approved collection. Theme: God’s inseparable
+love.”** This explicitly approves that named reference, not the whole book.
+Codex checks for an existing entry, preserves contextual notes, and adds your
+theme. If it is new, the equivalent command is:
+
+```sh
+Rscript scripts/curation.R append Romans "Romans 8:38-39" \
+  --context "Paul reassures believers in Rome about God’s love in Christ, within his argument about suffering and salvation." \
+  --theme "God’s inseparable love" --confirm-reviewed
+```
+
+Without `--confirm-reviewed`, append creates a suggestion. If the reference
+already exists, approve it instead; duplicates are rejected. Edit/add its theme
+in the JSON while preserving existing notes. Collections are retained indefinitely.
+
+## Change the current reading book
+
+Once you have approved references, ask Codex to start the new book, or run:
+
+```sh
+Rscript scripts/curation.R switch Romans
+```
+
+The command refuses a book without approved references and changes only the
+`current-bible-book` field in `index.qmd`. The homepage’s **On my heart** card
+uses `{{< meta current-bible-book >}}`, and daily selection reads that same field.
+Review and publish normally when ready. The next build uses the new book; no
+passages are substituted from another book. If the field is edited by hand to
+an empty/unapproved collection, the card safely displays unavailable.
+
+## Daily rotation and checks
+
+Only entries explicitly marked approved with valid provenance can enter the
+rotation. The original formula is preserved:
+`(New York date - 2026-01-01).days % approved_count`, using approved entries in
+catalog order. An unchanged collection cycles through all approved references
+before repeating. Suggestions/rejections do not consume rotation positions.
+Approving, rejecting, or reordering entries recalculates the modulo immediately
+and predictably; this can shift that day’s selection or repeat a recent passage.
+There is no manual workflow adjustment or random selection.
+
+```sh
+Rscript scripts/curation.R validate
+Rscript tests/test_curation.R
+python3 -m unittest discover -s tests -v
+quarto render
+python3 scripts/verse_of_day.py verify-output
+```
+
+The R checks exercise approval gates and the actual Python selector together.
+The existing API-response and rendered-output safeguards remain in place.
+Unapproved candidates never reach the API query or the published card. The
+Python adapter is retained to preserve the working system; new curation and
+notification tools use R rather than duplicating its ESV retrieval code.
+
+## New-book email
+
+After a successful Pages deployment, the workflow compares that publication’s
+book with the **last successful publishing run** and sends a reference-only
+email to the address configured by `KYLEVERSE_NOTIFICATION_EMAIL` when they differ. It asks whether you want
+to add references from the book you just finished and lists the new book’s
+non-rejected candidates with status, context, and theme. Unapproved suggestions
+are clearly labeled. If no candidates were prepared, it says so; it never
+invents or auto-approves any. Normal daily builds and candidate-only edits do not
+send emails when the reading book is unchanged.
+
+Configure these **GitHub Actions repository secrets**, in addition to the
+existing `ESV_API_TOKEN`:
+
+- `KYLEVERSE_NOTIFICATION_EMAIL`: the destination address (for example, `recipient@example.invalid`).
+- `GMAIL_SMTP_USER`: the Gmail account sending the email (can be your own account).
+- `GMAIL_SMTP_APP_PASSWORD`: a Gmail app password for that account, **not** its
+  normal login password. Google requires 2-Step Verification for app passwords;
+  some managed accounts cannot use them. See [Google’s app-password guide](https://support.google.com/accounts/answer/185833).
+
+Delivery uses `curl` over authenticated, certificate-verified SMTPS on Gmail
+port 465 with SMTP diagnostics disabled. Credentials are scoped to the email
+step, never stored in the catalog, email, published HTML, or command arguments.
+No email is sent by the curation commands or local render.
+
+To preview using two existing commit SHAs, set `READING_PREVIOUS_SHA` and
+`READING_CURRENT_SHA` in your environment, then run the default **dry run**:
+
+```sh
+Rscript scripts/reading_email.R
+```
+
+Only `--send` enables delivery; do not use it for local testing. The workflow
+uses `actions: read` to find the last successful publication via the existing
+GitHub CLI. A missing SMTP secret, history lookup error, or delivery error fails
+the email step **after** Pages publication, with a sanitized error. The next
+scheduled/manual run retries while the last successful run still has the old
+book. Check Actions failures. Initial publication with no known previous book
+does not invent a finished book or send a misleading reminder.
+
+SMTP is not an exactly-once queue: rerunning an already successful transition,
+or a lost delivery acknowledgment, can produce a duplicate. A stable Message-ID
+helps mail clients identify repeats but is not a delivery guarantee. The first
+successful run after a change records the new baseline automatically through
+GitHub’s run history. Multiple edits before publication produce one reminder
+for the final published transition. Replying to the email never auto-approves a
+reference or modifies a file; review and explicitly approve with Codex/the CLI.
 
 ## Build and verification
 
@@ -77,8 +204,8 @@ If you provide it locally, inject it securely into the process environment.
   The workflow checks these settings and does not change them automatically.
 - Keep `ESV_API_TOKEN` under **Settings → Secrets and variables → Actions →
   Repository secrets**. No personal GitHub token is needed.
-- Allow GitHub Actions, the official checkout/Python/Quarto actions, and workflow
-  permissions for `contents: write` and `pages: write`. Branch rules must allow
+- Allow GitHub Actions, the official checkout/Python/R/Quarto actions, and workflow
+  permissions for `contents: write`, `pages: write`, and `actions: read`. Branch rules must allow
   Quarto's generated-output updates to `gh-pages`; retain protection on `main`.
 - After pushing the reviewed files to `main`, select **Actions → Publish KyleVerse
   → Run workflow** for the first authenticated check. A successful ESV retrieval
@@ -86,7 +213,7 @@ If you provide it locally, inject it securely into the process environment.
   warning and still publish the unavailable card; they do not keep a cached verse.
 - The schedule runs daily at **06:17 UTC** (**1:17 a.m. EST / 2:17 a.m. EDT**), as
   well as on pushes to `main` and manual runs from `main`. Jobs are serialized.
-  The token is passed only to the retrieval step, not Quarto or publishing.
+  The ESV token is passed only to retrieval; Gmail credentials only to the email step.
 - The official Quarto setup/publish actions render and update `gh-pages`.
   GitHub does not trigger a branch-based Pages build for a `GITHUB_TOKEN` push,
   so the workflow explicitly requests the Pages build and checks that the
@@ -123,3 +250,10 @@ Official references:
 - [Quarto GitHub Pages publishing](https://quarto.org/docs/publishing/github-pages.html)
 - [GitHub schedule limitations](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 - [GitHub Pages build API](https://docs.github.com/en/rest/pages/pages#request-a-github-pages-build)
+
+Both R command-line tools suppress warning details and replace exceptions with
+fixed error messages and a nonzero exit status. Personal notes, parser excerpts,
+and credentials are never included in error output. Intentional `show`/dry-run
+commands still display contextual notes for local review; dry runs do not print
+the configured recipient. Missing or invalid recipient configuration blocks
+delivery rather than falling back to a hardcoded address.

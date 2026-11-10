@@ -94,15 +94,31 @@ def selected_reference(book, day, root=ROOT):
     entries = catalog.get(book, [])
     if not isinstance(entries, list) or not entries:
         raise Unavailable("The current book has no curated passages.")
+    approved = []
     seen = set()
     for entry in entries:
-        if not isinstance(entry, dict) or not isinstance(entry.get("context"), str) or not entry["context"].strip():
+        if not isinstance(entry, dict):
+            raise Unavailable("A curated entry is invalid.")
+        status = entry.get("status", "suggested")
+        if status not in ("suggested", "approved", "rejected"):
+            raise Unavailable("A curated approval status is invalid.")
+        if status != "approved":
+            continue
+        if entry.get("approval_source") not in ("user-confirmed", "existing-active-collection"):
+            raise Unavailable("An approved entry is missing its approval source.")
+        if entry.get("approval_source") == "user-confirmed" and not entry.get("reviewed_at"):
+            raise Unavailable("A user-approved entry is missing its review timestamp.")
+        if not isinstance(entry.get("context"), str) or not entry["context"].strip():
             raise Unavailable("Each curated passage needs a reference and context note.")
-        reference_range(entry.get("reference"), book)
-        if entry["reference"] in seen:
+        bounds, _ = reference_range(entry.get("reference"), book)
+        identity = tuple(bounds)
+        if identity in seen:
             raise Unavailable("The curated list contains duplicate references.")
-        seen.add(entry["reference"])
-    return entries[(day - EPOCH).days % len(entries)]["reference"]
+        seen.add(identity)
+        approved.append(entry)
+    if not approved:
+        raise Unavailable("The current book has no approved curated passages.")
+    return approved[(day - EPOCH).days % len(approved)]["reference"]
 
 
 def validate_response(payload, reference, book):

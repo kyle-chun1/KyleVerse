@@ -45,8 +45,8 @@ class VerseTests(unittest.TestCase):
         (self.root / "index.qmd").write_text('---\ncurrent-bible-book: "Isaiah"\n---\n')
         self.catalog = {book: [] for book in verse.BOOKS}
         self.catalog["Isaiah"] = [
-            {"reference": "Isaiah 25:1", "context": "Reference-only fixture."},
-            {"reference": "Isaiah 40:28-29", "context": "Reference-only fixture."},
+            {"reference": "Isaiah 25:1", "context": "Reference-only fixture.", "status": "approved", "approval_source": "existing-active-collection"},
+            {"reference": "Isaiah 40:28-29", "context": "Reference-only fixture.", "status": "approved", "approval_source": "existing-active-collection"},
         ]
         self.save_catalog()
 
