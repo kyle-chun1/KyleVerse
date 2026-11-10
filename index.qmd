@@ -3,6 +3,7 @@ title: "Home"
 title-block-banner: false
 title-block-style: none
 page-layout: full
+current-bible-book: "Isaiah"
 ---
 
 :::::::: hero-content
@@ -107,7 +108,7 @@ Some of my small, recent joys.
 
 *I'm reading through the Book of*
 
-Isaiah
+{{< meta current-bible-book >}}
 :::
 
 ::: {.enjoying-card .joys-card}

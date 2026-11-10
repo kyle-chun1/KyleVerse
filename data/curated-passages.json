@@ -1,0 +1,93 @@
+{
+  "Genesis": [],
+  "Exodus": [],
+  "Leviticus": [],
+  "Numbers": [],
+  "Deuteronomy": [],
+  "Joshua": [],
+  "Judges": [],
+  "Ruth": [],
+  "1 Samuel": [],
+  "2 Samuel": [],
+  "1 Kings": [],
+  "2 Kings": [],
+  "1 Chronicles": [],
+  "2 Chronicles": [],
+  "Ezra": [],
+  "Nehemiah": [],
+  "Esther": [],
+  "Job": [],
+  "Psalms": [],
+  "Proverbs": [],
+  "Ecclesiastes": [],
+  "Song of Solomon": [],
+  "Isaiah": [
+    {
+      "reference": "Isaiah 12:2",
+      "context": "A complete personal confession of trust in God within a song of thanksgiving; not a promise of an easy life."
+    },
+    {
+      "reference": "Isaiah 25:1",
+      "context": "A complete prayer of praise addressed explicitly to the LORD; thanksgiving for his faithfulness."
+    },
+    {
+      "reference": "Isaiah 40:28-29",
+      "context": "A complete description of the everlasting Creator and his care for the weary, within comfort addressed to Israel."
+    },
+    {
+      "reference": "Isaiah 40:30-31",
+      "context": "A complete contrast between human exhaustion and waiting on the LORD, within comfort addressed to Israel; not a guarantee of personal success."
+    },
+    {
+      "reference": "Isaiah 55:6-7",
+      "context": "A complete invitation to seek the LORD and turn from wickedness; the recipient and call to repentance are explicit."
+    },
+    {
+      "reference": "Isaiah 55:8-9",
+      "context": "The LORD is explicitly identified as the speaker; a complete comparison of divine and human ways in an invitation to repentance."
+    }
+  ],
+  "Jeremiah": [],
+  "Lamentations": [],
+  "Ezekiel": [],
+  "Daniel": [],
+  "Hosea": [],
+  "Joel": [],
+  "Amos": [],
+  "Obadiah": [],
+  "Jonah": [],
+  "Micah": [],
+  "Nahum": [],
+  "Habakkuk": [],
+  "Zephaniah": [],
+  "Haggai": [],
+  "Zechariah": [],
+  "Malachi": [],
+  "Matthew": [],
+  "Mark": [],
+  "Luke": [],
+  "John": [],
+  "Acts": [],
+  "Romans": [],
+  "1 Corinthians": [],
+  "2 Corinthians": [],
+  "Galatians": [],
+  "Ephesians": [],
+  "Philippians": [],
+  "Colossians": [],
+  "1 Thessalonians": [],
+  "2 Thessalonians": [],
+  "1 Timothy": [],
+  "2 Timothy": [],
+  "Titus": [],
+  "Philemon": [],
+  "Hebrews": [],
+  "James": [],
+  "1 Peter": [],
+  "2 Peter": [],
+  "1 John": [],
+  "2 John": [],
+  "3 John": [],
+  "Jude": [],
+  "Revelation": []
+}

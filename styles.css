@@ -379,6 +379,108 @@ body:has(.hero-content) main {
   margin-right: 0.45rem;
 }
 
+/* About introduction */
+
+body:has(.about-intro) #title-block-header {
+  display: none;
+}
+
+body:has(.about-intro) main.content {
+  max-width: 1200px;
+  width: 100%;
+}
+
+.about-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(2rem, 5vw, 5rem);
+  padding: 3rem clamp(1rem, 3vw, 2rem) 5rem;
+}
+
+.about-text h1 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.about-portrait {
+  margin-top: 2rem;
+  background: #FFFDF8;
+  border: 12px solid #FFFDF8;
+  border-bottom-width: 40px;
+  border-radius: 3px;
+  box-shadow: 0 8px 25px rgba(80, 74, 67, 0.15);
+  transform: rotate(3deg);
+}
+
+.about-portrait-placeholder {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.about-portrait-placeholder p {
+  margin: 0;
+}
+
+/* Verse of the Day */
+
+.about-sidebar {
+  min-width: 0;
+}
+
+.verse-card {
+  margin-top: 3rem;
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  background: #E8CFC3;
+  border-radius: 3px;
+  box-shadow: 0 6px 18px rgba(80, 74, 67, 0.1);
+  transform: rotate(-1deg);
+  overflow-wrap: anywhere;
+}
+
+.verse-card h2 {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  border: 0;
+  font-size: 2rem;
+  color: #504A43;
+}
+
+.verse-accent {
+  float: right;
+  color: #506A58;
+  font-size: 1.5rem;
+}
+
+.verse-card .verse-text {
+  margin: 1.25rem 0;
+  padding: 0;
+  border: 0;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.4rem;
+  line-height: 1.5;
+  color: #504A43;
+  white-space: pre-wrap;
+}
+
+.verse-card p {
+  font-family: 'Nunito Sans', sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #504A43;
+}
+
+.verse-card .verse-reference {
+  font-weight: 700;
+}
+
+.verse-card .verse-attribution {
+  margin-bottom: 0;
+  font-size: 0.75rem;
+}
+
 /* Responsive layouts */
 
 @media (min-width: 901px) {
@@ -427,6 +529,20 @@ body:has(.hero-content) main {
 }
 
 @media (max-width: 768px) {
+  .about-intro {
+    grid-template-columns: 1fr;
+  }
+
+  .verse-card {
+    max-width: 480px;
+    margin: 3rem auto 0;
+  }
+
+  .about-portrait {
+    width: min(100%, 320px);
+    margin: 0 auto;
+  }
+
   .hero-content {
     flex-direction: column;
     align-items: flex-start;

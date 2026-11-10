@@ -1,0 +1,99 @@
+name: Publish KyleVerse
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # 06:17 UTC = 1:17 a.m. EST / 2:17 a.m. EDT; selection uses New York's date.
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kyleverse-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pages: write
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: '1.11.9'
+
+      - name: Test selection, validation, and failure handling
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Check existing branch publishing settings
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          configured=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.source.branch == "gh-pages" and .source.path == "/" and .build_type != "workflow"')
+          if [ "$configured" != "true" ]; then
+            echo "::error::Set Settings > Pages to Deploy from a branch, gh-pages, /(root)."
+            exit 1
+          fi
+
+      - name: Retrieve and validate today's ESV passage
+        env:
+          ESV_API_TOKEN: ${{ secrets.ESV_API_TOKEN }}
+        run: python3 scripts/verse_of_day.py fetch
+
+      - name: Render the website
+        run: quarto render
+
+      - name: Verify rendered Scripture against the API response
+        run: python3 scripts/verse_of_day.py verify-output
+
+      - name: Publish validated site to gh-pages
+        uses: quarto-dev/quarto-actions/publish@v2
+        with:
+          target: gh-pages
+          render: false
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # GITHUB_TOKEN pushes do not themselves trigger branch-based Pages builds.
+      - name: Request Pages deployment and wait for success
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          expected=$(gh api "repos/$GITHUB_REPOSITORY/commits/gh-pages" --jq .sha)
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" --silent
+          for attempt in $(seq 1 60); do
+            build=$(gh api "repos/$GITHUB_REPOSITORY/pages/builds/latest")
+            commit=$(jq -r .commit <<< "$build")
+            status=$(jq -r .status <<< "$build")
+            if [ "$commit" = "$expected" ]; then
+              if [ "$status" = "built" ]; then
+                echo "GitHub Pages successfully published the validated gh-pages commit."
+                exit 0
+              fi
+              if [ "$status" = "errored" ]; then
+                echo "::error::GitHub Pages deployment failed. Check the Pages build logs."
+                exit 1
+              fi
+            fi
+            sleep 10
+          done
+          echo "::error::Timed out waiting for GitHub Pages to publish this commit."
+          exit 1
