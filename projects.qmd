@@ -1,0 +1,19 @@
+---
+title: "Projects"
+---
+
+# My Projects
+
+A collection of things I'm working on.
+
+## Project 1: Statistical Visualizations
+
+Experiments with R and data visualization.
+
+## Project 2: Photography
+
+A collection of my favorite photographs.
+
+## Project 3: Coming Soon
+
+Something interesting will go here!

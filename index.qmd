@@ -1,0 +1,121 @@
+---
+title: "Home"
+title-block-banner: false
+title-block-style: none
+page-layout: full
+---
+
+:::::::: hero-content
+::: hero-text
+# Welcome to Kyle's World
+
+Help yourself to a slice of my life. Thank you for visiting my corner of the Internet!
+:::
+
+:::::: hero-collage
+::: {.photo-card .photo-one}
+:::
+
+::: {.photo-card .photo-two}
+:::
+
+::: {.doodle .doodle-one}
+✿
+:::
+::::::
+::::::::
+
+::::::: explore-section
+## Passions
+
+:::::: explore-grid
+::: {.explore-card .projects-card}
+### Projects
+
+My technical work, personal goals, and hobbies.
+
+[Explore →](projects.qmd)
+:::
+
+::: {.explore-card .photography-card}
+### Photography
+
+"Photography must suggest, not insist or explain."
+
+[Explore →](photography.qmd)
+:::
+
+::: {.explore-card .writing-card}
+### Writing
+
+A collection of blogs, short-stories, and prayers.
+
+[Explore →](writing.qmd)
+:::
+::::::
+:::::::
+
+:::::::::::: gallery-section
+## Seasons Gallery
+
+A miniature exhibition, curated for you.
+
+::::::::::: gallery-grid
+:::: {.gallery-photo .tilt-left}
+![Almost Summer](images/seasons/almost-summer.jpeg){.gallery-image}
+
+*Almost Summer*
+::::
+
+:::: {.gallery-photo .tilt-right}
+![Soft Serve](images/seasons/soft-serve.jpeg){.gallery-image}
+
+*Soft Serve*
+::::
+
+:::: {.gallery-photo .tilt-left}
+![Falliage](images/seasons/falliage.jpeg){.gallery-image}
+
+*Falliage*
+::::
+
+:::: {.gallery-photo .tilt-right}
+![A World Alone](images/seasons/a-world-alone.jpeg){.gallery-image}
+
+
+*A World Alone*
+::::
+:::::::::::
+::::::::::::
+
+::::::: enjoying-section
+## Currently
+
+Some of my small, recent joys.
+
+:::::: enjoying-grid
+::: {.enjoying-card .music-card}
+### {{< fa headphones >}} On repeat
+
+*I've been listening to*
+
+"Godspeed" by Frank Ocean
+:::
+
+::: {.enjoying-card .reading-card}
+### {{< fa book-open >}} On my heart
+
+*I'm reading through the Book of*
+
+Isaiah
+:::
+
+::: {.enjoying-card .joys-card}
+### {{< fa mug-hot >}} One blessing
+
+*I'm so thankful for*
+
+morning praise and prayer
+:::
+::::::
+:::::::

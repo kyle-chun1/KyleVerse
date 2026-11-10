@@ -1,0 +1,26 @@
+
+project:
+  type: website
+
+website:
+  title: "Kyle's World"
+  navbar:
+    background: "#F7F0E5"
+    foreground: "#504A43"
+    right:
+      - text: Home
+        href: index.qmd
+      - text: About
+        href: about.qmd
+      - text: Projects
+        href: projects.qmd
+      - text: Photography
+        href: photography.qmd
+      - text: Writing
+        href: writing.qmd
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: false
