@@ -1,0 +1,41 @@
+name: One-time email delivery test
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type SEND ONE TEST EMAIL to authorize one test attempt'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kyleverse-one-time-email-test
+  cancel-in-progress: false
+
+jobs:
+  test-email:
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'SEND ONE TEST EMAIL' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # Create the fixed, persistent one-attempt marker ref.
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: r-lib/actions/setup-r@v2
+      - name: Install existing email dependencies
+        run: Rscript -e 'install.packages(c("jsonlite", "curl")); stopifnot(requireNamespace("jsonlite"), requireNamespace("curl"))'
+      - name: Test the one-time safeguards without sending mail
+        run: Rscript tests/test_email.R
+      - name: Claim one attempt and send the labeled test email
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EMAIL_TEST_CONFIRMATION: ${{ inputs.confirmation }}
+          KYLEVERSE_NOTIFICATION_EMAIL: ${{ secrets.KYLEVERSE_NOTIFICATION_EMAIL }}
+          GMAIL_SMTP_USER: ${{ secrets.GMAIL_SMTP_USER }}
+          GMAIL_SMTP_APP_PASSWORD: ${{ secrets.GMAIL_SMTP_APP_PASSWORD }}
+        run: Rscript scripts/test_email.R --send-test

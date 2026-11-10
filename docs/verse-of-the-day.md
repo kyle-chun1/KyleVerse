@@ -257,3 +257,47 @@ and credentials are never included in error output. Intentional `show`/dry-run
 commands still display contextual notes for local review; dry runs do not print
 the configured recipient. Missing or invalid recipient configuration blocks
 delivery rather than falling back to a hardcoded address.
+
+## One-time email delivery test (manual only)
+
+After reviewing and approving the implementation, commit/push it to `main` when
+ready. No email or remote marker is created by preparing or locally testing it.
+The separate **One-time email delivery test** workflow has no push or scheduled
+trigger and does not invoke publishing or normal book-change notification logic.
+It does not read/change your reading book or passage collection.
+
+1. Verify the existing repository secrets `GMAIL_SMTP_USER`,
+   `GMAIL_SMTP_APP_PASSWORD`, and `KYLEVERSE_NOTIFICATION_EMAIL` are configured.
+   No new secrets are needed; the recipient cannot be entered as workflow input.
+2. Open **Actions → One-time email delivery test → Run workflow**.
+3. Select **main** and type **SEND ONE TEST EMAIL** in the confirmation input.
+4. Run it once. Look for the subject **[TEST ONLY] KyleVerse email delivery check**
+   in the configured recipient's inbox/spam folder. Logs contain only generic
+   status messages, never recipient addresses, email bodies, or SMTP diagnostics.
+
+The workflow needs `contents: write` solely to create the fixed marker tag
+`kyleverse-email-delivery-test-v1` pointing to an existing commit. Repository tag
+rules must permit its creation. This creates no new commit, changes no branch,
+and contains no personal information. The marker must be created successfully
+before SMTP; the [GitHub create-reference API](https://docs.github.com/en/rest/git/refs#create-a-reference)
+rejects a duplicate creation. Serialized workflow runs plus this persistent
+atomic claim block repeat sends, including separate manual dispatches. The
+script also rejects rerun attempts and requires the exact manual confirmation.
+
+**At most one SMTP attempt, not guaranteed delivery:** there are no send retries.
+The marker stays consumed after SMTP failure, cancellation, or a lost delivery
+acknowledgment. A claimed marker can therefore result in zero delivered emails.
+Do not delete/reset the marker or rerun to try again: inspect the inbox and run
+status first, and request a separately reviewed retry if needed. Gmail acceptance
+does not itself prove inbox delivery. Routine daily publication and normal
+book-change emails do not consult or modify this test marker.
+
+Local safety checks (mocked API and SMTP only):
+
+```sh
+Rscript tests/test_email.R
+Rscript scripts/test_email.R
+```
+
+The second command is a dry run by default. Never pass `--send-test` locally as
+a check; sending is permitted only by the guarded, confirmed manual workflow.
