@@ -48,6 +48,7 @@ jobs:
         run: |
           Rscript scripts/curation.R validate
           Rscript tests/test_curation.R
+          Rscript tests/test_links.R
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
@@ -74,6 +75,9 @@ jobs:
 
       - name: Render the website
         run: quarto render
+
+      - name: Check case-sensitive internal links
+        run: Rscript scripts/check_links.R
 
       - name: Verify rendered Scripture against the API response
         run: python3 scripts/verse_of_day.py verify-output

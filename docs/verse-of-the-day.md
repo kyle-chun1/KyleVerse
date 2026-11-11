@@ -301,3 +301,18 @@ Rscript scripts/test_email.R
 
 The second command is a dry run by default. Never pass `--send-test` locally as
 a check; sending is permitted only by the guarded, confirmed manual workflow.
+
+## Internal navigation checks
+
+Use lowercase page filenames consistently. Keep Quarto source links such as
+`photography.qmd` in the navbar and Markdown; Quarto resolves these to
+`photography.html` during rendering when the source filename matches exactly.
+
+After `quarto render`, run `Rscript scripts/check_links.R` (or pass an alternative
+output directory as its first argument). This base-R check compares local href
+paths with the exact directory-entry names, so it catches casing errors even
+on a case-insensitive Mac. It also rejects unresolved `.qmd` links, missing files,
+and paths outside the output directory. External URLs and fragment-only links
+are skipped; fragment IDs and image `src` attributes are outside its scope.
+The publishing workflow runs it before deployment. Regression fixtures can be
+checked with `Rscript tests/test_links.R`.
