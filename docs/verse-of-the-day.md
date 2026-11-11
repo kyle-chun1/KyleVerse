@@ -98,11 +98,7 @@ and predictably; this can shift that day’s selection or repeat a recent passag
 There is no manual workflow adjustment or random selection.
 
 ```sh
-Rscript scripts/curation.R validate
-Rscript tests/test_curation.R
-python3 -m unittest discover -s tests -v
-quarto render
-python3 scripts/verse_of_day.py verify-output
+Rscript scripts/validate.R
 ```
 
 The R checks exercise approval gates and the actual Python selector together.
@@ -182,13 +178,7 @@ reference or modifies a file; review and explicitly approve with Codex/the CLI.
    Any mismatch blocks publication. With an alternative output directory, use
    `--output /path/to/rendered/site`.
 
-Local checks:
-
-```sh
-python3 -m unittest discover -s tests -v
-quarto render
-python3 scripts/verse_of_day.py verify-output
-```
+Local checks use the single entry point: `Rscript scripts/validate.R`.
 
 Offline tests use unmistakable non-Scripture strings solely in temporary test
 folders. They test punctuation and HTML escaping without inventing Bible text.
@@ -316,3 +306,26 @@ and paths outside the output directory. External URLs and fragment-only links
 are skipped; fragment IDs and image `src` attributes are outside its scope.
 The publishing workflow runs it before deployment. Regression fixtures can be
 checked with `Rscript tests/test_links.R`.
+
+## Validate the whole project locally
+
+Run `Rscript scripts/validate.R` from the repository root. It also works with
+an absolute script path from another working directory. Prerequisites are R,
+Python 3, Quarto, and the existing R packages `jsonlite` and `curl`; the validator
+does not install dependencies automatically.
+
+It validates the catalog, discovers and runs every `tests/test_*.R` suite in a
+separate R process, runs the Python Scripture tests, renders the website, checks
+generated internal links, and verifies the ESV output using the existing scripts.
+The first failure stops the run with a nonzero exit status and the failed step
+name. Success is reported only after all checks pass. Subprocess diagnostics are
+not printed because they can contain private data. Individual checks remain
+available for deliberate local troubleshooting.
+
+No credentials are required: credential environment variables are removed from
+child processes and restored in the invoking process afterward. No retrieval,
+SMTP delivery, GitHub mutation, or publishing command is run. A local render
+uses an already valid current-day response if present, otherwise the existing
+unavailable card; passing does not certify live ESV or Gmail connectivity.
+Rendering updates only the usual generated `_site`, `_verse`, and Quarto caches.
+GitHub Actions workflows are unchanged by this consolidation.
