@@ -56,6 +56,18 @@ class VerseTests(unittest.TestCase):
     def selection(self, day=DAY):
         return verse.selected_reference("Isaiah", day, self.root)
 
+    def test_invalid_book_keys_cannot_bypass_canonical_validation(self):
+        for book in ("Isiah", "isaiah", "Romans ", "1Samuel", "Psalm", "Tobit", "", None):
+            with self.subTest(book=book):
+                with self.assertRaises(verse.Unavailable):
+                    verse.require_canonical_book(book)
+                with self.assertRaises(verse.Unavailable):
+                    verse.reference_range("Isaiah 1:1", book)
+        self.catalog["Isiah"] = []
+        self.save_catalog()
+        with self.assertRaises(verse.Unavailable):
+            self.selection()
+
     def test_actual_homepage_source_of_truth(self):
         self.assertIn(verse.current_book(), verse.BOOKS)
         source = (verse.ROOT / "index.qmd").read_text()

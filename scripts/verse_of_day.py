@@ -21,19 +21,19 @@ ENDPOINT = "https://api.esv.org/v3/passage/text/"
 TIMEZONE = ZoneInfo("America/New_York")
 EPOCH = date(2026, 1, 1)
 # Crossway's numeric verse IDs use the traditional 66-book order.
-BOOKS = (
-    "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy", "Joshua",
-    "Judges", "Ruth", "1 Samuel", "2 Samuel", "1 Kings", "2 Kings",
-    "1 Chronicles", "2 Chronicles", "Ezra", "Nehemiah", "Esther", "Job",
-    "Psalms", "Proverbs", "Ecclesiastes", "Song of Solomon", "Isaiah",
-    "Jeremiah", "Lamentations", "Ezekiel", "Daniel", "Hosea", "Joel", "Amos",
-    "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai",
-    "Zechariah", "Malachi", "Matthew", "Mark", "Luke", "John", "Acts", "Romans",
-    "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians", "Philippians",
-    "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy",
-    "Titus", "Philemon", "Hebrews", "James", "1 Peter", "2 Peter", "1 John",
-    "2 John", "3 John", "Jude", "Revelation",
-)
+def load_books():
+    try:
+        books = json.loads((ROOT / "data/bible-books.json").read_text(encoding="utf-8"))
+        if (not isinstance(books, list) or len(books) != 66
+                or any(not isinstance(book, str) or not book.strip() for book in books)
+                or len(set(books)) != 66):
+            raise ValueError
+        return tuple(books)
+    except (OSError, ValueError, TypeError):
+        raise RuntimeError("The canonical Bible-book list is missing or invalid.") from None
+
+
+BOOKS = load_books()
 UNAVAILABLE = "Today's passage is unavailable. Please check back later."
 
 
@@ -49,6 +49,12 @@ class NoRedirects(HTTPRedirectHandler):
 
 def today():
     return datetime.now(TIMEZONE).date()
+
+
+def require_canonical_book(book):
+    if not isinstance(book, str) or book not in BOOKS:
+        raise Unavailable("Use a canonical book name from data/bible-books.json.")
+    return book
 
 
 def current_book(root=ROOT):
@@ -67,12 +73,11 @@ def current_book(root=ROOT):
             raise Unavailable("The homepage book field is invalid.") from None
     elif book.startswith("'") and book.endswith("'"):
         book = book[1:-1]
-    if book not in BOOKS:
-        raise Unavailable("Use a canonical book name in the homepage metadata.")
-    return book
+    return require_canonical_book(book)
 
 
 def reference_range(reference, book):
+    require_canonical_book(book)
     if not isinstance(reference, str):
         raise Unavailable("A curated reference is invalid.")
     book_pattern = r"(?:Psalm|Psalms)" if book == "Psalms" else re.escape(book)
@@ -88,9 +93,12 @@ def reference_range(reference, book):
 
 
 def selected_reference(book, day, root=ROOT):
+    require_canonical_book(book)
     catalog = json.loads((root / "data/curated-passages.json").read_text(encoding="utf-8"))
     if not isinstance(catalog, dict):
         raise Unavailable("The curated catalog must be an object keyed by book name.")
+    for name in catalog:
+        require_canonical_book(name)
     entries = catalog.get(book, [])
     if not isinstance(entries, list) or not entries:
         raise Unavailable("The current book has no curated passages.")

@@ -13,6 +13,7 @@ run <- function() {
   for (name in c("curation.R", "reading_email.R", "test_email.R", "shared.R"))
     file.copy(file.path(repo, "scripts", name), file.path(fixture, "scripts", name))
   file.copy(file.path(repo, "data/curated-passages.json"), file.path(fixture, "data/curated-passages.json"))
+  file.copy(file.path(repo, "data/bible-books.json"), file.path(fixture, "data/bible-books.json"))
   file.copy(file.path(repo, "index.qmd"), file.path(fixture, "index.qmd"))
   catalog <- jsonlite::read_json(file.path(fixture, "data/curated-passages.json"))
   catalog$Romans <- list()

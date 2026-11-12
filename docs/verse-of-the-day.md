@@ -90,6 +90,15 @@ Review and publish normally when ready. The next build uses the new book; no
 passages are substituted from another book. If the field is edited by hand to
 an empty/unapproved collection, the card safely displays unavailable.
 
+Book names are validated by both R and Python against the single ordered list
+in `data/bible-books.json`. Use exact spelling and capitalization, including
+`Psalms`, `Song of Solomon`, and spaces in numbered names such as `1 Samuel`.
+Abbreviations, misspellings, and unsupported names are rejected even if added
+as catalog keys. Do not reorder the shared list: its order determines the
+ESV API’s numeric book IDs. The existing singular `Psalm` reference alias is
+still accepted within a passage when the selected book is `Psalms`. Canonical
+name checks do not replace independent verification of the API response.
+
 ## Daily rotation and checks
 
 Only entries explicitly marked approved with valid provenance can enter the
