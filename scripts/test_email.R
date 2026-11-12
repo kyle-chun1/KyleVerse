@@ -1,5 +1,12 @@
 # Manual delivery check only: never uses the reading-book notification path.
-source("scripts/reading_email.R")
+.script_path <- local({
+  sources <- Filter(is.character, lapply(sys.frames(), function(frame) frame$ofile))
+  path <- if (length(sources)) tail(sources, 1L)[[1]] else
+    gsub("~+~", " ", sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1]), fixed = TRUE)
+  normalizePath(path, mustWork = TRUE)
+})
+source(file.path(dirname(.script_path), "shared.R"), local = TRUE)
+
 TEST_EMAIL_REF <- "refs/tags/kyleverse-email-delivery-test-v1"
 
 test_email_message <- function() list(

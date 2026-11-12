@@ -1,61 +1,19 @@
 # Reference curation only. Scripture text continues to come exclusively from Crossway.
-# Run from the repository root; jsonlite is the only package used by this tool.
+.script_path <- local({
+  sources <- Filter(is.character, lapply(sys.frames(), function(frame) frame$ofile))
+  path <- if (length(sources)) tail(sources, 1L)[[1]] else
+    gsub("~+~", " ", sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1]), fixed = TRUE)
+  normalizePath(path, mustWork = TRUE)
+})
+source(file.path(dirname(.script_path), "shared.R"), local = TRUE)
 
-curation_error <- function(message) stop(message, call. = FALSE)
-scalar_text <- function(x) is.character(x) && length(x) == 1L && !is.na(x) && nzchar(trimws(x))
-
-normalize_reference <- function(reference, book) {
-  if (!scalar_text(reference)) curation_error("A reference is required.")
-  reference <- trimws(gsub("\u2013", "-", reference, fixed = TRUE))
-  if (book == "Psalms") reference <- sub("^Psalm ", "Psalms ", reference)
-  prefix <- paste0(book, " ")
-  if (!startsWith(reference, prefix)) curation_error("The reference must belong to the requested book.")
-  part <- substring(reference, nchar(prefix) + 1L)
-  match <- regmatches(part, regexec("^([1-9][0-9]*):([1-9][0-9]*)(?:-([1-9][0-9]*))?$", part, perl = TRUE))[[1]]
-  if (!length(match)) curation_error("Use a single chapter and one to three whole verses, e.g. Romans 8:38-39.")
-  chapter <- as.numeric(match[2]); first <- as.numeric(match[3])
-  last <- if (nzchar(match[4])) as.numeric(match[4]) else first
-  if (any(!is.finite(c(chapter, first, last))) || chapter >= 1000 || last >= 1000 || last < first || last - first > 2)
-    curation_error("Use a single chapter and one to three whole verses.")
-  paste0(book, " ", chapter, ":", first, if (first != last) paste0("-", last) else "")
-}
-
-validate_catalog <- function(catalog) {
-  if (!is.list(catalog) || is.null(names(catalog)) || anyDuplicated(names(catalog)))
-    curation_error("The catalog must have unique book names as object keys.")
-  allowed <- c("reference", "context", "theme", "status", "approval_source", "reviewed_at")
-  for (book in names(catalog)) {
-    entries <- catalog[[book]]
-    if (!is.list(entries) || !is.null(names(entries))) curation_error("Each book must contain an array of entries.")
-    seen <- character()
-    for (entry in entries) {
-      if (!is.list(entry) || is.null(names(entry)) || anyDuplicated(names(entry)) || any(!names(entry) %in% allowed))
-        curation_error("Entries may contain only reference, context, theme, status, and approval audit fields; never Scripture text.")
-      reference <- normalize_reference(entry$reference, book)
-      if (reference %in% seen) curation_error(paste("Duplicate passage:", reference))
-      seen <- c(seen, reference)
-      if (!scalar_text(entry$context)) curation_error(paste("A context note is required for", reference))
-      if (!scalar_text(entry$status) || !entry$status %in% c("suggested", "approved", "rejected"))
-        curation_error(paste("Use suggested, approved, or rejected for", reference))
-      for (field in intersect(c("theme", "approval_source", "reviewed_at"), names(entry)))
-        if (!scalar_text(entry[[field]])) curation_error(paste("Invalid", field, "for", reference))
-      if (entry$status == "approved" && (!scalar_text(entry$approval_source) ||
-          !entry$approval_source %in% c("user-confirmed", "existing-active-collection")))
-        curation_error(paste("Approved entries require an explicit approval source:", reference))
-      if (identical(entry$approval_source, "user-confirmed") && !scalar_text(entry$reviewed_at))
-        curation_error(paste("User-confirmed decisions require a review timestamp:", reference))
-    }
-  }
-  invisible(catalog)
-}
-
-load_catalog <- function(root = ".") {
+load_catalog <- function(root = PROJECT_ROOT) {
   catalog <- jsonlite::read_json(file.path(root, "data/curated-passages.json"), simplifyVector = FALSE)
   validate_catalog(catalog)
   catalog
 }
 
-save_catalog <- function(catalog, root = ".") {
+save_catalog <- function(catalog, root = PROJECT_ROOT) {
   validate_catalog(catalog)
   path <- file.path(root, "data/curated-passages.json")
   temporary <- tempfile("curation-", tmpdir = dirname(path))
@@ -65,32 +23,9 @@ save_catalog <- function(catalog, root = ".") {
   invisible(catalog)
 }
 
-require_book <- function(catalog, book) {
-  if (!scalar_text(book) || !book %in% names(catalog)) curation_error("Use an existing canonical book key from the catalog.")
-}
+read_homepage <- function(root = PROJECT_ROOT) paste(readLines(file.path(root, "index.qmd"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
-approved_entries <- function(catalog, book) {
-  require_book(catalog, book)
-  Filter(function(entry) identical(entry$status, "approved"), catalog[[book]])
-}
-
-reading_book <- function(text) {
-  lines <- strsplit(text, "\n", fixed = TRUE)[[1]]
-  delimiters <- which(trimws(lines) == "---")
-  if (length(delimiters) < 2L || delimiters[1] != 1L) curation_error("Homepage YAML metadata is missing.")
-  header <- lines[seq.int(2L, delimiters[2] - 1L)]
-  field <- grep("^current-bible-book:[ \t]*", header, value = TRUE)
-  if (length(field) != 1L) curation_error("Set exactly one current-bible-book field in index.qmd.")
-  value <- trimws(sub("^current-bible-book:[ \t]*", "", field))
-  if (startsWith(value, '"')) value <- jsonlite::fromJSON(value)
-  else if (startsWith(value, "'") && endsWith(value, "'")) value <- substring(value, 2L, nchar(value) - 1L)
-  if (!scalar_text(value)) curation_error("Invalid current-bible-book metadata.")
-  value
-}
-
-read_homepage <- function(root = ".") paste(readLines(file.path(root, "index.qmd"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-
-prepare_book <- function(book, candidates, root = ".") {
+prepare_book <- function(book, candidates, root = PROJECT_ROOT) {
   catalog <- load_catalog(root)
   require_book(catalog, book)
   if (!is.list(candidates) || !is.null(names(candidates)) || !length(candidates))
@@ -107,7 +42,7 @@ prepare_book <- function(book, candidates, root = ".") {
   save_catalog(catalog, root)
 }
 
-review_passage <- function(book, reference, decision, confirmed = FALSE, root = ".") {
+review_passage <- function(book, reference, decision, confirmed = FALSE, root = PROJECT_ROOT) {
   if (!decision %in% c("approved", "rejected")) curation_error("Choose approved or rejected.")
   if (decision == "approved" && !isTRUE(confirmed))
     curation_error("Approval requires --confirm-reviewed after your explicit review of this reference.")
@@ -124,7 +59,7 @@ review_passage <- function(book, reference, decision, confirmed = FALSE, root = 
   save_catalog(catalog, root)
 }
 
-append_passage <- function(book, reference, context, theme = NULL, confirmed = FALSE, root = ".") {
+append_passage <- function(book, reference, context, theme = NULL, confirmed = FALSE, root = PROJECT_ROOT) {
   candidate <- list(reference = reference, context = context)
   if (!is.null(theme)) candidate$theme <- theme
   # Build and review in memory so a failed approval cannot leave a partial write.
@@ -140,7 +75,7 @@ append_passage <- function(book, reference, context, theme = NULL, confirmed = F
   save_catalog(catalog, root)
 }
 
-switch_book <- function(book, root = ".") {
+switch_book <- function(book, root = PROJECT_ROOT) {
   catalog <- load_catalog(root)
   require_book(catalog, book)
   if (!length(approved_entries(catalog, book))) curation_error("Approve at least one passage before switching books.")
@@ -156,7 +91,7 @@ switch_book <- function(book, root = ".") {
   invisible(TRUE)
 }
 
-show_book <- function(book, root = ".") {
+show_book <- function(book, root = PROJECT_ROOT) {
   catalog <- load_catalog(root)
   require_book(catalog, book)
   if (!length(catalog[[book]])) cat(book, "has no candidates or approvals yet.\n")
@@ -194,17 +129,6 @@ curation_main <- function(args = commandArgs(trailingOnly = TRUE)) {
     return(append_passage(book, args[3], option("--context", TRUE), option("--theme"), confirmed))
   }
   curation_error("Unknown curation command.")
-}
-
-safe_cli <- function(action, failure_message) {
-  tryCatch(withCallingHandlers({
-    action()
-    0L
-  }, warning = function(warning) invokeRestart("muffleWarning")),
-  error = function(error) {
-    message(failure_message)
-    1L
-  })
 }
 
 if (sys.nframe() == 0L) {

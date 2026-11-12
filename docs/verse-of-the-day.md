@@ -22,7 +22,11 @@ New R tools require `jsonlite`; email additionally uses `curl`:
 install.packages(c("jsonlite", "curl"))
 ```
 
-Run commands from the repository root. To import Codex’s reviewable JSON draft:
+The examples below run from the repository root. The curation and both email
+CLIs can also be invoked by absolute script path from another directory,
+including paths containing spaces. Repository files resolve relative to the
+script; relative candidate-file paths resolve relative to your calling directory.
+To import Codex’s reviewable JSON draft:
 
 ```sh
 Rscript scripts/curation.R prepare Romans /path/to/romans-candidates.json
@@ -329,3 +333,7 @@ uses an already valid current-day response if present, otherwise the existing
 unavailable card; passing does not certify live ESV or Gmail connectivity.
 Rendering updates only the usual generated `_site`, `_verse`, and Quarto caches.
 GitHub Actions workflows are unchanged by this consolidation.
+
+The three R CLIs load `scripts/shared.R` directly for shared catalog validation,
+sanitized CLI handling, and SMTP delivery; they no longer source each other’s
+command implementations. No new R packages are required.

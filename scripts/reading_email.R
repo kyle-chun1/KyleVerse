@@ -1,9 +1,13 @@
 # Gmail notification for a published reading-book transition; dry run by default.
-source("scripts/curation.R")
+.script_path <- local({
+  sources <- Filter(is.character, lapply(sys.frames(), function(frame) frame$ofile))
+  path <- if (length(sources)) tail(sources, 1L)[[1]] else
+    gsub("~+~", " ", sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1]), fixed = TRUE)
+  normalizePath(path, mustWork = TRUE)
+})
+source(file.path(dirname(.script_path), "shared.R"), local = TRUE)
 
-valid_sha <- function(sha) scalar_text(sha) && grepl("^[a-fA-F0-9]{40}$", sha)
-
-git_revision_file <- function(sha, path, root = ".") {
+git_revision_file <- function(sha, path, root = PROJECT_ROOT) {
   if (!valid_sha(sha) || !path %in% c("index.qmd", "data/curated-passages.json"))
     curation_error("Invalid reading-notification revision or path.")
   result <- suppressWarnings(system2("git", c("-C", shQuote(root), "show", shQuote(paste0(sha, ":", path))), stdout = TRUE, stderr = FALSE))
@@ -25,7 +29,7 @@ previous_successful_revision <- function(repo = Sys.getenv("GITHUB_REPOSITORY"),
   sha
 }
 
-reading_notification <- function(previous_sha, current_sha, root = ".", reader = git_revision_file) {
+reading_notification <- function(previous_sha, current_sha, root = PROJECT_ROOT, reader = git_revision_file) {
   if (!valid_sha(current_sha)) curation_error("A valid current publication SHA is required.")
   if (!scalar_text(previous_sha) || identical(previous_sha, strrep("0", 40))) return(NULL)
   previous <- reading_book(reader(previous_sha, "index.qmd", root))
@@ -54,40 +58,6 @@ reading_notification <- function(previous_sha, current_sha, root = ".", reader =
   ), collapse = "\n")
   list(previous = previous, current = current, subject = paste("KyleVerse reading:", previous, "to", current),
        body = body, id = paste0("kyleverse-reading-", current_sha))
-}
-
-send_reading_email <- function(notification, sender = Sys.getenv("GMAIL_SMTP_USER"),
-                               password = Sys.getenv("GMAIL_SMTP_APP_PASSWORD"),
-                               transport = curl::send_mail,
-                               recipient = Sys.getenv("KYLEVERSE_NOTIFICATION_EMAIL")) {
-  if (!scalar_text(sender) || !grepl("^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+$", sender) ||
-      grepl("[\r\n]", sender) || !scalar_text(password))
-    curation_error("Configure GMAIL_SMTP_USER and GMAIL_SMTP_APP_PASSWORD repository secrets; no email was sent.")
-  if (!scalar_text(recipient) || !grepl("^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+$", recipient) || grepl("[\r\n]", recipient))
-    curation_error("Configure a valid KYLEVERSE_NOTIFICATION_EMAIL repository secret; no email was sent.")
-  if (grepl("[\r\n]", notification$subject) || grepl("[\r\n]", notification$id))
-    curation_error("Invalid email headers; no email was sent.")
-  # Base64 protects UTF-8 notes and avoids SMTP line-length/dot-stuffing problems.
-  encoded <- jsonlite::base64_enc(charToRaw(enc2utf8(notification$body)))
-  encoded <- gsub("[\r\n]", "", encoded)
-  starts <- seq.int(1L, nchar(encoded), by = 76L)
-  body <- substring(encoded, starts, pmin(starts + 75L, nchar(encoded)))
-  message <- paste(c(paste0("From: KyleVerse <", sender, ">"),
-    paste0("To: ", recipient), paste0("Subject: ", notification$subject),
-    paste0("Date: ", format(Sys.time(), "%a, %d %b %Y %H:%M:%S +0000", tz = "UTC")),
-    paste0("Message-ID: <", notification$id, "@kyleverse.local>"),
-    "MIME-Version: 1.0", "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: base64", "", body, ""), collapse = "\r\n")
-  # Never print SMTP diagnostics or exception details: they can contain credentials.
-  tryCatch(withCallingHandlers({
-    invisible(transport(mail_from = sender, mail_rcpt = recipient, message = message,
-      smtp_server = "smtps://smtp.gmail.com:465", use_ssl = "force", verbose = FALSE,
-      username = sender, password = gsub("[[:space:]]", "", password),
-      ssl_verifypeer = TRUE, ssl_verifyhost = 2L, followlocation = FALSE,
-      connecttimeout = 10L, timeout = 30L))
-  }, warning = function(warning) invokeRestart("muffleWarning")),
-  error = function(error) curation_error("Gmail delivery failed. Check the SMTP secrets and Gmail settings; credential details were suppressed."))
-  invisible(TRUE)
 }
 
 reading_email_main <- function(args = commandArgs(trailingOnly = TRUE)) {
