@@ -2,10 +2,20 @@
 
 /* Base and typography */
 
+:root {
+  --cream: #F7F0E5;
+  --ink: #504A43;
+  --sage-text: #687C70;
+  --sage: #D7E4D1;
+  --peach: #E8CFC3;
+  --sand: #EAE1CE;
+  --paper: #FFFDF8;
+}
+
 body {
   font-family: 'Nunito Sans', sans-serif;
-  background-color: #F7F0E5;
-  color: #504A43;
+  background-color: var(--cream);
+  color: var(--ink);
 }
 
 h1, h2, h3 {
@@ -21,7 +31,7 @@ h1, h2, h3,
 h1 {
   font-size: clamp(2.5rem, 6vw, 5rem);
   font-weight: 500;
-  color: #504A43;
+  color: var(--ink);
   line-height: 1.2;
 }
 
@@ -41,35 +51,35 @@ a:hover {
 main p {
   font-size: 1.15rem;
   line-height: 1.8;
-  color: #687C70;
+  color: var(--sage-text);
 }
 
 /* Navigation */
 
 .navbar {
-  background-color: #F7F0E5 !important;
-  border-bottom: 1px solid #D7E4D1;
+  background-color: var(--cream) !important;
+  border-bottom: 1px solid var(--sage);
   padding: 0.9rem 2rem;
 }
 
 .navbar-brand {
   font-size: 1.5rem;
-  color: #504A43 !important;
+  color: var(--ink) !important;
 }
 
 .navbar .nav-link {
-  color: #504A43 !important;
+  color: var(--ink) !important;
   font-size: 0.95rem;
   transition: color 0.2s ease;
   font-family: 'Nunito Sans', sans-serif;
 }
 
 .navbar .nav-link:hover {
-  color: #687C70 !important;
+  color: var(--sage-text) !important;
 }
 
 .navbar .nav-link.active {
-  color: #687C70 !important;
+  color: var(--sage-text) !important;
   font-weight: 600;
 }
 
@@ -121,22 +131,31 @@ body:has(.hero-content) main {
   position: absolute;
   width: 230px;
   height: 280px;
-  border: 12px solid #FFFDF8;
+  border: 12px solid var(--paper);
   border-bottom-width: 40px;
   box-shadow: 0 8px 25px rgba(80, 74, 67, 0.15);
   border-radius: 3px;
   transition: transform 0.3s ease;
 }
 
+.photo-one,
+.gallery-sage,
+.music-card {
+  background: var(--sage);
+}
+
 .photo-one {
-  background: #D7E4D1;
   top: 20px;
   left: 10%;
   transform: rotate(-10deg);
 }
 
+.photo-two,
+.reading-card {
+  background: var(--peach);
+}
+
 .photo-two {
-  background: #E8CFC3;
   top: 85px;
   left: 45%;
   transform: rotate(8deg);
@@ -155,7 +174,7 @@ body:has(.hero-content) main {
   right: 0;
   top: 0;
   font-size: 4rem;
-  color: #687C70;
+  color: var(--sage-text);
 }
 
 /* Explore cards */
@@ -165,26 +184,28 @@ body:has(.hero-content) main {
   width: 90%;
   margin: 3rem auto 6rem;
   padding-top: 2rem;
-  border-top: 1px solid #D7E4D1;
+  border-top: 1px solid var(--sage);
 }
 
 .explore-section h2 {
-  font-size: 2.8rem;
-  color: #504A43;
   margin-bottom: 2rem;
-  border-bottom: none !important;
 }
 
-.explore-grid {
+.explore-grid,
+.enjoying-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.5rem;
 }
 
-.explore-card {
+.explore-card,
+.enjoying-card {
   padding: 2rem;
-  min-height: 240px;
   border-radius: 12px;
+}
+
+.explore-card {
+  min-height: 240px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -198,27 +219,27 @@ body:has(.hero-content) main {
 }
 
 .projects-card {
-  background-color: #D7E4D1;
+  background-color: var(--sage);
 }
 
 .photography-card {
-  background-color: #E8CFC3;
+  background-color: var(--peach);
 }
 
 .writing-card {
-  background-color: #EAE1CE;
+  background-color: var(--sand);
 }
 
 .explore-card h3 {
   font-size: 2rem;
-  color: #504A43;
+  color: var(--ink);
   margin-bottom: 0.5rem;
 }
 
 .explore-card p,
 .enjoying-card p {
   font-size: 0.95rem;
-  color: #504A43;
+  color: var(--ink);
 }
 
 .explore-card a {
@@ -235,13 +256,14 @@ body:has(.hero-content) main {
   max-width: 1600px;
   margin: 4rem auto 7rem;
   padding-top: 2rem;
-  border-top: 1px solid #D7E4D1;
+  border-top: 1px solid var(--sage);
 }
 
+.explore-section h2,
 .gallery-section h2,
 .enjoying-section h2 {
   font-size: 2.8rem;
-  color: #504A43;
+  color: var(--ink);
   border-bottom: none !important;
 }
 
@@ -254,7 +276,7 @@ body:has(.hero-content) main {
 }
 
 .gallery-photo {
-  background: #FFFDF8;
+  background: var(--paper);
   padding: 12px 12px 18px;
   box-shadow: 0 8px 22px rgba(80, 74, 67, 0.15);
   border-radius: 3px;
@@ -294,28 +316,12 @@ body:has(.hero-content) main {
   aspect-ratio: 4 / 5;
 }
 
-.gallery-sage {
-  background: #D7E4D1;
-}
-
-.gallery-peach {
-  background: #E8CFC3;
-}
-
-.gallery-lavender {
-  background: #DED4ED;
-}
-
-.gallery-cream {
-  background: #EAE1CE;
-}
-
 .gallery-photo p {
   font-family: 'Cormorant Garamond', serif;
   font-style: italic;
   font-size: 1.3rem;
   text-align: center;
-  color: #504A43;
+  color: var(--ink);
   margin: 0.8rem 0 0;
 }
 
@@ -338,16 +344,11 @@ body:has(.hero-content) main {
 /* Currently enjoying */
 
 .enjoying-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.5rem;
   margin-top: 2.5rem;
 }
 
 .enjoying-card {
-  padding: 2rem;
   min-height: 220px;
-  border-radius: 12px;
   border: 1px solid rgba(80, 74, 67, 0.08);
   transition: transform 0.3s ease;
 }
@@ -358,20 +359,12 @@ body:has(.hero-content) main {
 
 .enjoying-card h3 {
   font-size: 2rem;
-  color: #504A43;
+  color: var(--ink);
   margin-bottom: 0.7rem;
 }
 
-.music-card {
-  background: #D7E4D1;
-}
-
-.reading-card {
-  background: #E8CFC3;
-}
-
 .joys-card {
-  background: #EAE1CE;
+  background: var(--sand);
 }
 
 .enjoying-card h3 svg,
@@ -405,8 +398,8 @@ body:has(.about-intro) main.content {
 
 .about-portrait {
   margin-top: 2rem;
-  background: #FFFDF8;
-  border: 12px solid #FFFDF8;
+  background: var(--paper);
+  border: 12px solid var(--paper);
   border-bottom-width: 40px;
   border-radius: 3px;
   box-shadow: 0 8px 25px rgba(80, 74, 67, 0.15);
@@ -433,7 +426,7 @@ body:has(.about-intro) main.content {
 .verse-card {
   margin-top: 3rem;
   padding: 1.25rem;
-  background: #E8CFC3;
+  background: var(--peach);
   border-radius: 3px;
   box-shadow: 0 6px 18px rgba(80, 74, 67, 0.1);
   transform: rotate(-1deg);
@@ -445,7 +438,7 @@ body:has(.about-intro) main.content {
   padding: 0;
   border: 0;
   font-size: 2rem;
-  color: #504A43;
+  color: var(--ink);
 }
 
 .verse-accent {
@@ -461,7 +454,7 @@ body:has(.about-intro) main.content {
   font-family: 'Cormorant Garamond', serif;
   font-size: 1.4rem;
   line-height: 1.5;
-  color: #504A43;
+  color: var(--ink);
   white-space: pre-wrap;
 }
 
@@ -469,7 +462,7 @@ body:has(.about-intro) main.content {
   font-family: 'Nunito Sans', sans-serif;
   font-size: 0.85rem;
   line-height: 1.6;
-  color: #504A43;
+  color: var(--ink);
 }
 
 .verse-card .verse-reference {
@@ -562,10 +555,6 @@ body:has(.about-intro) main.content {
     left: 5%;
   }
 
-  .photo-two {
-    left: 45%;
-  }
-
   .explore-grid,
   .enjoying-grid {
     grid-template-columns: 1fr;
@@ -583,6 +572,7 @@ body:has(.about-intro) main.content {
 /* Reduced motion */
 
 @media (prefers-reduced-motion: reduce) {
+  .photo-card,
   .explore-card,
   .gallery-photo,
   .enjoying-card {
