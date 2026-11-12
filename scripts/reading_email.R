@@ -1,4 +1,4 @@
-# Gmail notification for a published reading-book transition; dry run by default.
+# Journaled reading-book notifications, independent of publication; dry run by default.
 .script_path <- local({
   sources <- Filter(is.character, lapply(sys.frames(), function(frame) frame$ofile))
   path <- if (length(sources)) tail(sources, 1L)[[1]] else
@@ -6,6 +6,7 @@
   normalizePath(path, mustWork = TRUE)
 })
 source(file.path(dirname(.script_path), "shared.R"), local = TRUE)
+source(file.path(dirname(.script_path), "notification_state.R"), local = TRUE)
 
 git_revision_file <- function(sha, path, root = PROJECT_ROOT) {
   if (!valid_sha(sha) || !path %in% c("index.qmd", "data/curated-passages.json"))
@@ -13,20 +14,6 @@ git_revision_file <- function(sha, path, root = PROJECT_ROOT) {
   result <- suppressWarnings(system2("git", c("-C", shQuote(root), "show", shQuote(paste0(sha, ":", path))), stdout = TRUE, stderr = FALSE))
   if (!is.null(attr(result, "status"))) curation_error("Could not read reading metadata from the published Git revision.")
   paste(result, collapse = "\n")
-}
-
-previous_successful_revision <- function(repo = Sys.getenv("GITHUB_REPOSITORY"), runner = system2) {
-  if (!grepl("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", repo)) curation_error("GITHUB_REPOSITORY is missing or invalid.")
-  # The existing gh CLI handles authentication without exposing its token in argv.
-  result <- suppressWarnings(runner("gh", c("api", "--method", "GET",
-    shQuote(paste0("repos/", repo, "/actions/workflows/publish.yml/runs")),
-    "--raw-field", "status=success", "--raw-field", "branch=main", "--raw-field", "per_page=1",
-    "--jq", shQuote(".workflow_runs[0].head_sha // empty")), stdout = TRUE, stderr = FALSE))
-  if (!is.null(attr(result, "status"))) curation_error("Could not inspect prior successful publication; email was withheld.")
-  if (!length(result)) return("")
-  sha <- trimws(result[1])
-  if (!valid_sha(sha)) curation_error("The previous publication revision is invalid.")
-  sha
 }
 
 reading_notification <- function(previous_sha, current_sha, root = PROJECT_ROOT, reader = git_revision_file) {
@@ -65,16 +52,21 @@ reading_email_main <- function(args = commandArgs(trailingOnly = TRUE)) {
   send <- "--send" %in% args
   current <- Sys.getenv("READING_CURRENT_SHA")
   previous <- Sys.getenv("READING_PREVIOUS_SHA")
-  if (send && !scalar_text(previous)) {
-    previous <- previous_successful_revision()
-    if (!nzchar(previous)) previous <- Sys.getenv("READING_PUSH_BEFORE_SHA")
+  if (send) {
+    if (Sys.getenv("GITHUB_ACTIONS") != "true" || Sys.getenv("GITHUB_REF") != "refs/heads/main" ||
+        !Sys.getenv("GITHUB_EVENT_NAME") %in% c("push", "schedule", "workflow_dispatch") ||
+        !grepl("^[0-9]+$", Sys.getenv("GITHUB_RUN_ID")) || !grepl("^[0-9]+$", Sys.getenv("GITHUB_RUN_ATTEMPT")))
+      curation_error("Notification delivery requires a trusted main-branch workflow attempt.")
+    origin <- jsonlite::read_json(file.path(PROJECT_ROOT, "data/notification-origin.json"))$baseline_sha
+    initialize <- Sys.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" &&
+      Sys.getenv("NOTIFICATION_INITIALIZE") == "INITIALIZE NOTIFICATION JOURNAL"
+    return(process_reading_notifications(github_notification_store(origin, initialize = initialize), current,
+      paste(Sys.getenv("GITHUB_RUN_ID"), Sys.getenv("GITHUB_RUN_ATTEMPT"), sep = ":")))
   }
   notification <- reading_notification(previous, current)
   if (is.null(notification)) {
     cat("No published book transition to notify; no email sent.\n")
-  } else if (send) {
-    send_reading_email(notification)
-    cat("Reading-book transition email accepted by Gmail.\n")
+
   } else {
     cat("DRY RUN - no email sent\nTo: configured notification recipient",
         "\nSubject:", notification$subject, "\n\n", notification$body, "\n")

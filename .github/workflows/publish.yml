@@ -23,7 +23,6 @@ jobs:
     permissions:
       contents: write
       pages: write
-      actions: read
     steps:
       - name: Check out publication revision
         uses: actions/checkout@v6
@@ -115,14 +114,3 @@ jobs:
           done
           echo "::error::Timed out waiting for GitHub Pages to publish this commit."
           exit 1
-
-      # Successful-run history is the receipt: failed mail is retried next run.
-      - name: Email on a published reading-book change
-        env:
-          GH_TOKEN: ${{ github.token }}
-          KYLEVERSE_NOTIFICATION_EMAIL: ${{ secrets.KYLEVERSE_NOTIFICATION_EMAIL }}
-          GMAIL_SMTP_USER: ${{ secrets.GMAIL_SMTP_USER }}
-          GMAIL_SMTP_APP_PASSWORD: ${{ secrets.GMAIL_SMTP_APP_PASSWORD }}
-          READING_CURRENT_SHA: ${{ github.sha }}
-          READING_PUSH_BEFORE_SHA: ${{ github.event.before }}
-        run: Rscript scripts/reading_email.R --send

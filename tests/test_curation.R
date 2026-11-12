@@ -191,14 +191,6 @@ check("SMTP missing credentials and errors never expose passwords", {
 check("Git revision input cannot inject a shell command", {
   fails(git_revision_file("not-a-sha; command", "index.qmd"))
 })
-check("Successful-publication lookup is scoped to main and fails safely", {
-  captured <- NULL
-  fake <- function(command, args, ...) { captured <<- c(command, args); old_sha }
-  stopifnot(previous_successful_revision("kyle-chun1/KyleVerse", fake) == old_sha,
-    "status=success" %in% captured, "branch=main" %in% captured)
-  fails(previous_successful_revision("kyle-chun1/KyleVerse", function(...) structure(character(), status = 1L)))
-  stopifnot(previous_successful_revision("kyle-chun1/KyleVerse", function(...) character()) == "")
-})
 check("Missing or injected recipients block transport without fallback", {
   notification <- reading_notification(old_sha, new_sha, reader = reader)
   called <- FALSE

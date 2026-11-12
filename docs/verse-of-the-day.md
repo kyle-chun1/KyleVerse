@@ -120,53 +120,119 @@ Unapproved candidates never reach the API query or the published card. The
 Python adapter is retained to preserve the working system; new curation and
 notification tools use R rather than duplicating its ESV retrieval code.
 
-## New-book email
+## Journaled new-book email
 
-After a successful Pages deployment, the workflow compares that publication’s
-book with the **last successful publishing run** and sends a reference-only
-email to the address configured by `KYLEVERSE_NOTIFICATION_EMAIL` when they differ. It asks whether you want
-to add references from the book you just finished and lists the new book’s
-non-rejected candidates with status, context, and theme. Unapproved suggestions
-are clearly labeled. If no candidates were prepared, it says so; it never
-invents or auto-approves any. Normal daily builds and candidate-only edits do not
-send emails when the reading book is unchanged.
+Reading notifications run in their own **Reading-book notifications** workflow,
+independently of website publishing. It runs on `main` pushes, manual dispatch,
+and a daily check at 06:17 UTC. The Scripture publishing schedule is unchanged.
+Only the notification workflow calls the normal email sender; publication no
+longer sends mail. The isolated one-time test remains unchanged.
 
-Configure these **GitHub Actions repository secrets**, in addition to the
-existing `ESV_API_TOKEN`:
+The source of events is committed `index.qmd` history, not successful Actions
+runs or the current book pair alone. `data/notification-origin.json` pins the
+existing commit from which tracking begins. Do not edit that boundary after
+activation: the state branch checks it for consistency. Earlier notification
+history is unknown and is not automatically replayed.
 
-- `KYLEVERSE_NOTIFICATION_EMAIL`: the destination address (for example, `recipient@example.invalid`).
-- `GMAIL_SMTP_USER`: the Gmail account sending the email (can be your own account).
-- `GMAIL_SMTP_APP_PASSWORD`: a Gmail app password for that account, **not** its
-  normal login password. Google requires 2-Step Verification for app passwords;
-  some managed accounts cannot use them. See [Google’s app-password guide](https://support.google.com/accounts/answer/185833).
+Each main-line commit is checked in order from the durable cursor. A transition
+is identified by its commit SHA and parent SHA. Thus `Isaiah → Romans → John`
+produces two events even if no deployment happened between commits; `A → B → A`
+also produces two, even though the endpoints match. Commit each reading change
+if each should receive an email: uncommitted changes, squashed-away intermediate
+states, and lost Git history cannot be recovered or invented. Retain full Git
+history. The workflow checks out the exact triggering revision; older runs do
+not move a newer cursor backward.
 
-Delivery uses `curl` over authenticated, certificate-verified SMTPS on Gmail
-port 465 with SMTP diagnostics disabled. Credentials are scoped to the email
-step, never stored in the catalog, email, published HTML, or command arguments.
-No email is sent by the curation commands or local render.
+### Durable storage and concurrency
 
-To preview using two existing commit SHAs, set `READING_PREVIOUS_SHA` and
-`READING_CURRENT_SHA` in your environment, then run the default **dry run**:
+The dedicated `notification-state` branch holds only `journal.json`, outside
+the website and main branch. It records a discovery cursor, event commit IDs,
+statuses, workflow attempt IDs, timestamps, and review reason codes. It stores
+no recipient, credentials, Scripture, contextual notes, or message bodies.
+Book names and candidate notes for email are read from the event’s Git revision.
+Collections and personal approval decisions are not modified.
 
-```sh
-Rscript scripts/reading_email.R
-```
+The branch uses atomic non-force ref updates. Every proposed state commit has
+the expected state head as its sole parent; a stale competing commit cannot
+fast-forward the branch. A distinct GitHub run ID/attempt is persisted in the
+claim before SMTP, so two concurrent runs cannot both claim a pending event.
+GitHub workflow concurrency also serializes normal runs, but the journal claim
+is the actual duplicate-send safeguard. Lost or rejected claim acknowledgments
+prevent SMTP. A later run can discover new events without resending old ones.
 
-Only `--send` enables delivery; do not use it for local testing. The workflow
-uses `actions: read` to find the last successful publication via the existing
-GitHub CLI. A missing SMTP secret, history lookup error, or delivery error fails
-the email step **after** Pages publication, with a sanitized error. The next
-scheduled/manual run retries while the last successful run still has the old
-book. Check Actions failures. Initial publication with no known previous book
-does not invent a finished book or send a misleading reminder.
+States and their meaning:
 
-SMTP is not an exactly-once queue: rerunning an already successful transition,
-or a lost delivery acknowledgment, can produce a duplicate. A stable Message-ID
-helps mail clients identify repeats but is not a delivery guarantee. The first
-successful run after a change records the new baseline automatically through
-GitHub’s run history. Multiple edits before publication produce one reminder
-for the final published transition. Replying to the email never auto-approves a
-reference or modifies a file; review and explicitly approve with Codex/the CLI.
+- `pending`: no SMTP attempt; configuration/preflight failures leave it pending.
+- `sending`: a durable claim exists; the process may still be running or may
+  have stopped before/during/after SMTP. Never automatically retry it.
+- `smtp_accepted`: the sender returned a positive SMTP result; **inbox delivery
+  remains unconfirmed**. No retry on workflow rerun.
+- `uncertain`: SMTP raised an error or did not return positive acceptance.
+  Gmail may still have accepted it. Held for manual review, not automatic retry.
+- `manual_review`: the event’s historical notification data could not be safely
+  interpreted. No invented event or message is sent.
+
+If finalizing an SMTP result encounters a concurrent state update, only the
+state update is retried (at most three times), never SMTP. If recording still
+fails, the durable `sending` claim remains held. Missing credentials are checked
+with an inert transport before claiming; no test mail is sent by this preflight.
+
+Unreadable metadata, missing/divergent history, discontinuous parent chains,
+and merge commits are conservatively held in the journal’s `review` record.
+Discovery stops at the last verified commit and sending pauses for history
+review. **Merge commits require reconciliation** rather than guessing which
+branch’s reading sequence reflects your intent. Preserve separate linear main
+commits for reading changes. Already uncertain attempts remain visible while
+later reliably established transitions can still be processed.
+
+### Activation after reviewing and publishing this implementation
+
+No remote state branch is created by local tests or validation. After approving
+and pushing the implementation:
+
+1. Keep existing Actions secrets `GMAIL_SMTP_USER`, `GMAIL_SMTP_APP_PASSWORD`,
+   and `KYLEVERSE_NOTIFICATION_EMAIL`. No new secrets or packages are required.
+   The sender uses certificate-verified Gmail SMTPS with diagnostics disabled.
+2. Allow the notification job’s `contents: write` permission to create/update
+   `notification-state`. The publishing job retains its existing Pages rights;
+   it no longer needs `actions: read` for notification-run history.
+3. Run **Reading-book notifications → Run workflow** on **main**, entering
+   **INITIALIZE NOTIFICATION JOURNAL** in the optional initialization field.
+   Review the pinned origin before this first activation. This initializes the
+   journal and can send any verified pending transitions since that origin.
+4. Protect the state branch from deletion, force pushes, and unrelated edits,
+   while permitting normal notification-bot fast-forward updates. It is source
+   control metadata, not a Pages deployment branch. Its history is public if
+   the repository is public, so keep personal data out of manual edits.
+
+Normal scheduled/push runs will **not recreate a missing journal**. A missing
+branch may mean state was lost, so they fail closed and require operator review.
+Do not use initialization to recover a previously used deleted branch: restore
+its last state instead, or receipts would be lost and old events could replay.
+
+### Manual review and delivery limits
+
+Check Actions failures and `notification-state:journal.json`. An accepted SMTP
+response is not proof of inbox delivery. For `sending`/`uncertain`, inspect the
+mailbox and workflow timing before any separately approved resolution; do not
+blindly reset records to pending. If inbox delivery cannot be established, a
+retry risks a duplicate and must be an explicit human decision. The journal has
+no automatic expiry/reclaim mechanism for attempts. Do not reset the origin,
+rewrite the cursor, or delete events as a shortcut. Review/reconcile ambiguous
+history against actual commits before clearing a history hold. Schema validation
+prevents falsely labeling automated records as confirmed inbox delivery.
+
+A crash after claiming can leave zero emails sent; an ACK lost after acceptance
+can leave an email delivered but unresolved. Exactly-once delivery cannot be
+guaranteed over Gmail SMTP. This design favors durable unresolved records over
+silent loss or automatic duplicates. First activation does not certify unknown
+old deliveries. Candidate-only edits and unchanged reading books create no new
+transition emails. Replying to an email does not approve Scripture or edit files.
+
+The previous two-revision preview CLI remains a dry run: set
+`READING_PREVIOUS_SHA`/`READING_CURRENT_SHA` and run `Rscript scripts/reading_email.R`
+without `--send`. Local checks use mocked GitHub/SMTP only:
+`Rscript tests/test_notifications.R` or the complete `Rscript scripts/validate.R`.
 
 ## Build and verification
 
@@ -208,7 +274,7 @@ If you provide it locally, inject it securely into the process environment.
 - Keep `ESV_API_TOKEN` under **Settings → Secrets and variables → Actions →
   Repository secrets**. No personal GitHub token is needed.
 - Allow GitHub Actions, the official checkout/Python/R/Quarto actions, and workflow
-  permissions for `contents: write`, `pages: write`, and `actions: read`. Branch rules must allow
+  permissions for `contents: write` and `pages: write`. Branch rules must allow
   Quarto's generated-output updates to `gh-pages`; retain protection on `main`.
 - After pushing the reviewed files to `main`, select **Actions → Publish KyleVerse
   → Run workflow** for the first authenticated check. A successful ESV retrieval
@@ -254,7 +320,7 @@ Official references:
 - [GitHub schedule limitations](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 - [GitHub Pages build API](https://docs.github.com/en/rest/pages/pages#request-a-github-pages-build)
 
-Both R command-line tools suppress warning details and replace exceptions with
+The R command-line tools suppress warning details and replace exceptions with
 fixed error messages and a nonzero exit status. Personal notes, parser excerpts,
 and credentials are never included in error output. Intentional `show`/dry-run
 commands still display contextual notes for local review; dry runs do not print
