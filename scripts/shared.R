@@ -5,7 +5,21 @@ curation_error <- function(message) stop(message, call. = FALSE)
 
 scalar_text <- function(x) is.character(x) && length(x) == 1L && !is.na(x) && nzchar(trimws(x))
 
+BIBLE_BOOKS <- tryCatch(jsonlite::read_json(file.path(PROJECT_ROOT, "data/bible-books.json"), simplifyVector = TRUE),
+  error = function(error) curation_error("The canonical Bible-book list is missing or invalid."))
+if (!is.character(BIBLE_BOOKS) || !is.null(dim(BIBLE_BOOKS)) || !is.null(names(BIBLE_BOOKS)) ||
+    length(BIBLE_BOOKS) != 66L || anyNA(BIBLE_BOOKS) ||
+    any(!nzchar(trimws(BIBLE_BOOKS))) || anyDuplicated(BIBLE_BOOKS))
+  curation_error("The canonical Bible-book list is missing or invalid.")
+
+require_canonical_book <- function(book) {
+  if (!scalar_text(book) || !book %in% BIBLE_BOOKS)
+    curation_error("Use a canonical book name from data/bible-books.json.")
+  invisible(book)
+}
+
 normalize_reference <- function(reference, book) {
+  require_canonical_book(book)
   if (!scalar_text(reference)) curation_error("A reference is required.")
   reference <- trimws(gsub("\u2013", "-", reference, fixed = TRUE))
   if (book == "Psalms") reference <- sub("^Psalm ", "Psalms ", reference)
@@ -26,6 +40,7 @@ validate_catalog <- function(catalog) {
     curation_error("The catalog must have unique book names as object keys.")
   allowed <- c("reference", "context", "theme", "status", "approval_source", "reviewed_at")
   for (book in names(catalog)) {
+    require_canonical_book(book)
     entries <- catalog[[book]]
     if (!is.list(entries) || !is.null(names(entries))) curation_error("Each book must contain an array of entries.")
     seen <- character()
@@ -51,6 +66,7 @@ validate_catalog <- function(catalog) {
 }
 
 require_book <- function(catalog, book) {
+  require_canonical_book(book)
   if (!scalar_text(book) || !book %in% names(catalog)) curation_error("Use an existing canonical book key from the catalog.")
 }
 
@@ -69,7 +85,7 @@ reading_book <- function(text) {
   value <- trimws(sub("^current-bible-book:[ \t]*", "", field))
   if (startsWith(value, '"')) value <- jsonlite::fromJSON(value)
   else if (startsWith(value, "'") && endsWith(value, "'")) value <- substring(value, 2L, nchar(value) - 1L)
-  if (!scalar_text(value)) curation_error("Invalid current-bible-book metadata.")
+  require_canonical_book(value)
   value
 }
 
