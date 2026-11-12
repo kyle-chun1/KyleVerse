@@ -259,6 +259,12 @@ without `--send`. Local checks use mocked GitHub/SMTP only:
 
 Local checks use the single entry point: `Rscript scripts/validate.R`.
 
+Pull requests targeting `main` run the same command in the **Validate pull
+request** workflow with read-only permissions and no repository secrets.
+All 12 stages run, including Quarto rendering, links, and verification of the
+safe unavailable card on a fresh checkout. The check does not fetch Scripture,
+publish, send email, or restore generated-site caches.
+
 Offline tests use unmistakable non-Scripture strings solely in temporary test
 folders. They test punctuation and HTML escaping without inventing Bible text.
 The authenticated Isaiah end-to-end check runs in Actions, where the repository
