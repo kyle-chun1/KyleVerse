@@ -15,9 +15,15 @@ Help yourself to a slice of my life. Thank you for visiting my corner of the Int
 
 :::::: hero-collage
 ::: {.photo-card .photo-one}
+```{=html}
+<img src="images/homepage/fade.jpeg" alt="Palm trees silhouetted against a sunset over the ocean" width="3680" height="5100">
+```
 :::
 
 ::: {.photo-card .photo-two}
+```{=html}
+<img src="images/homepage/buttermilkfalls_final.jpeg" alt="Autumn foliage surrounding the cascades at Buttermilk Falls" width="3720" height="4960">
+```
 :::
 
 ::: {.doodle .doodle-one}
