@@ -123,14 +123,17 @@ body:has(.hero-content) main {
 .hero-collage {
   flex: 1;
   position: relative;
-  height: 400px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 196px));
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 1.5rem 1rem;
   min-width: 0;
 }
 
 .photo-card {
-  position: absolute;
-  width: 230px;
-  height: 280px;
+  background: var(--paper);
   border: 12px solid var(--paper);
   border-bottom-width: 40px;
   box-shadow: 0 8px 25px rgba(80, 74, 67, 0.15);
@@ -138,35 +141,44 @@ body:has(.hero-content) main {
   transition: transform 0.3s ease;
 }
 
-.photo-one,
+.photo-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 368 / 510;
+  object-fit: contain;
+}
+
 .gallery-sage,
 .music-card {
   background: var(--sage);
 }
 
 .photo-one {
-  top: 20px;
-  left: 10%;
-  transform: rotate(-10deg);
+  translate: calc(1rem + 11px) 0;
+  transform: rotate(-5deg);
 }
 
-.photo-two,
 .reading-card {
   background: var(--peach);
 }
 
 .photo-two {
-  top: 85px;
-  left: 45%;
-  transform: rotate(8deg);
+  translate: calc(-1rem - 11px) 15px;
+  z-index: 1;
+  transform: rotate(5deg);
+}
+
+.hero-collage .photo-card:hover {
+  z-index: 2;
 }
 
 .photo-one:hover {
-  transform: rotate(-5deg) translateY(-10px);
+  transform: rotate(-2deg) translateY(-6px);
 }
 
 .photo-two:hover {
-  transform: rotate(3deg) translateY(-10px);
+  transform: rotate(2deg) translateY(-6px);
 }
 
 .doodle-one {
@@ -515,6 +527,19 @@ body:has(.about-intro) main.content {
   }
 }
 
+@media (max-width: 1000px) {
+  .hero-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2rem;
+  }
+
+  .hero-collage {
+    flex: none;
+    width: 100%;
+  }
+}
+
 @media (max-width: 900px) {
   .gallery-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -534,25 +559,6 @@ body:has(.about-intro) main.content {
   .about-portrait {
     width: min(100%, 320px);
     margin: 0 auto;
-  }
-
-  .hero-content {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .hero-collage {
-    width: 100%;
-    min-height: 350px;
-  }
-
-  .photo-card {
-    width: 45%;
-    height: 240px;
-  }
-
-  .photo-one {
-    left: 5%;
   }
 
   .explore-grid,
