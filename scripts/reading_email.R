@@ -56,8 +56,9 @@ reading_email_main <- function(args = commandArgs(trailingOnly = TRUE)) {
     if (Sys.getenv("GITHUB_ACTIONS") != "true" || Sys.getenv("GITHUB_REF") != "refs/heads/main" ||
         !Sys.getenv("GITHUB_EVENT_NAME") %in% c("push", "schedule", "workflow_dispatch") ||
         !grepl("^[0-9]+$", Sys.getenv("GITHUB_RUN_ID")) || !grepl("^[0-9]+$", Sys.getenv("GITHUB_RUN_ATTEMPT")))
-      curation_error("Notification delivery requires a trusted main-branch workflow attempt.")
-    origin <- jsonlite::read_json(file.path(PROJECT_ROOT, "data/notification-origin.json"))$baseline_sha
+      notification_error("CONFIGURATION_INVALID")
+    origin <- tryCatch(jsonlite::read_json(file.path(PROJECT_ROOT, "data/notification-origin.json"))$baseline_sha,
+      error = function(error) notification_error("CONFIGURATION_INVALID"))
     initialize <- Sys.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" &&
       Sys.getenv("NOTIFICATION_INITIALIZE") == "INITIALIZE NOTIFICATION JOURNAL"
     return(process_reading_notifications(github_notification_store(origin, initialize = initialize), current,
@@ -74,6 +75,5 @@ reading_email_main <- function(args = commandArgs(trailingOnly = TRUE)) {
 }
 
 if (sys.nframe() == 0L) {
-  quit(status = safe_cli(function() reading_email_main(),
-    "Reading notification failed. Check revision history, notification email, and SMTP configuration. Error details were suppressed."))
+  quit(status = notification_cli(function() reading_email_main()))
 }

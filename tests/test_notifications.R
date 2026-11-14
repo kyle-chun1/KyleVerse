@@ -187,4 +187,129 @@ check("Stored journal rejects private payload fields and confirmed-delivery clai
   state$events[[1]]$recipient <- NULL; state$events[[1]]$delivery <- "confirmed"
   fails(validate_notification_state(state))
 })
+
+# Full fake Git traversal: merge 9 introduces side commits 7 and 8 above base 1.
+merge_fixture <- function(books = c("Isaiah", "Isaiah", "Isaiah", "Isaiah"), base = 1) {
+  fixture <- new.env(); fixture$shallow <- FALSE; fixture$missing <- NULL; fixture$seen <- character()
+  fixture$nodes <- list(list(sha = sha(9), parents = c(sha(base), sha(8))),
+    list(sha = sha(8), parents = sha(7)), list(sha = sha(7), parents = sha(base)))
+  fixture$books <- setNames(books, vapply(c(base, 7, 8, 9), sha, character(1)))
+  fixture$git <- function(args, root, status_only = FALSE) {
+    if (status_only) return(if (args[3] == sha(base)) 0L else 1L)
+    if (args[1] == "rev-parse") return(if (fixture$shallow) "true" else "false")
+    stopifnot(args[1] == "rev-list")
+    nodes <- if ("--first-parent" %in% args) fixture$nodes[1] else {
+      stopifnot(identical(tail(args, 2), c("--not", sha(base))))
+      fixture$nodes
+    }
+    vapply(nodes, function(node) paste(c(node$sha, node$parents), collapse = " "), character(1))
+  }
+  fixture$history <- function(cursor, target, root) reading_history(cursor, target, root, fixture$git)
+  fixture$reader <- function(revision, path, root) {
+    fixture$seen <- c(fixture$seen, revision)
+    if (identical(revision, fixture$missing)) stop("PRIVATE-METADATA-ERROR")
+    stopifnot(path == "index.qmd", revision %in% names(fixture$books))
+    paste0('---\ncurrent-bible-book: "', fixture$books[[revision]], '"\n---\n')
+  }
+  fixture
+}
+check("Harmless merges verify every introduced state, advance once, and send nothing", {
+  f <- merge_fixture(); store <- memory_store(); attempts <- 0L
+  deliver <- function(...) { attempts <<- attempts + 1L; TRUE }
+  process(store, sha(9), history_fn = f$history, reader_fn = f$reader, deliver = deliver)
+  process(store, sha(9), owner = "run-b:1", history_fn = f$history, reader_fn = f$reader, deliver = deliver)
+  stopifnot(store$env$state$cursor == sha(9), is.null(store$env$state$review),
+    !length(store$env$state$events), attempts == 0L,
+    all(names(f$books) %in% f$seen), store$env$version == 1L)
+})
+check("Book-changing merges and side-branch change-then-revert histories remain held", {
+  cases <- list(c("Isaiah", "Romans", "Romans", "Romans"),
+    c("Isaiah", "Romans", "Isaiah", "Isaiah"), c("Isaiah", "Isaiah", "Isaiah", "Romans"))
+  for (books in cases) {
+    f <- merge_fixture(books); store <- memory_store(); attempts <- 0L
+    fails(process(store, sha(9), history_fn = f$history, reader_fn = f$reader,
+      deliver = function(...) { attempts <<- attempts + 1L; TRUE }))
+    stopifnot(store$env$state$cursor == sha(1), !length(store$env$state$events), attempts == 0L,
+      store$env$state$review$reason == "merge_or_discontinuous_history")
+  }
+})
+check("Missing metadata, shallow history, and older changed boundary states cannot pass a merge", {
+  for (kind in c("missing", "shallow", "boundary")) {
+    f <- merge_fixture()
+    if (kind == "missing") f$missing <- sha(7)
+    if (kind == "shallow") f$shallow <- TRUE
+    if (kind == "boundary") {
+      f$nodes[[3]]$parents <- sha(6)
+      f$books <- c(f$books, setNames("Romans", sha(6)))
+    }
+    state <- journal_reading_events(new_notification_state(sha(1)), sha(9), history = f$history, reader = f$reader)
+    stopifnot(!is.null(state$review), state$cursor == sha(1), !length(state$events))
+  }
+})
+check("Nested branch history is inspected even when merge endpoints agree", {
+  for (book in c("Isaiah", "Romans")) {
+    f <- merge_fixture()
+    f$nodes[[2]]$parents <- c(sha(7), sha(6))
+    f$nodes[[4]] <- list(sha = sha(6), parents = sha(1))
+    f$books <- c(f$books, setNames(book, sha(6)))
+    state <- journal_reading_events(new_notification_state(sha(1)), sha(9), history = f$history, reader = f$reader)
+    stopifnot(identical(is.null(state$review), book == "Isaiah"), sha(6) %in% f$seen)
+  }
+})
+check("Existing holds and event records are never automatically reconciled", {
+  f <- merge_fixture()
+  state <- journal_reading_events(new_notification_state(sha(1)), sha(2), history = history, reader = reader)
+  state$review <- list(reason = "merge_or_discontinuous_history", commit = sha(9))
+  stopifnot(identical(journal_reading_events(state, sha(9), history = f$history, reader = f$reader), state),
+    !length(f$seen))
+  store <- memory_store(); process(store, sha(4))
+  previous <- clone(store$env$state)
+  f <- merge_fixture(base = 4)
+  process(store, sha(9), history_fn = f$history, reader_fn = f$reader,
+    deliver = function(...) stop("SMTP must not run for a harmless merge"))
+  stopifnot(identical(store$env$state$events, previous$events),
+    identical(store$env$state$origin, previous$origin), store$env$state$cursor == sha(9))
+})
+check("Explicit in-memory reconciliation retains the required null review field", {
+  f <- merge_fixture()
+  held <- new_notification_state(sha(1))
+  held$review <- list(reason = "merge_or_discontinuous_history", commit = sha(9))
+  broken <- held; broken$review <- NULL
+  fails(validate_notification_state(broken))
+  candidate <- held; candidate["review"] <- list(NULL)
+  candidate <- journal_reading_events(candidate, sha(9), history = f$history, reader = f$reader)
+  validate_notification_state(candidate)
+  stopifnot(is.null(candidate$review), "review" %in% names(candidate), candidate$cursor == sha(9),
+    identical(candidate$events, held$events), identical(candidate$origin, held$origin),
+    identical(candidate$version, held$version), !is.null(held$review))
+})
+check("CLI failure categories are allowlisted and suppress raw messages and warnings", {
+  marker <- "PRIVATE-NOTE sender@example.invalid credential-test-marker"
+  for (category in NOTIFICATION_FAILURE_CATEGORIES) {
+    output <- capture.output(status <- notification_cli(function() notification_error(category)), type = "message")
+    stopifnot(status == 1L, identical(output,
+      paste0("Reading notification failed [", category, "]. Sensitive details suppressed.")))
+  }
+  actions <- list(function() stop(marker), function() notification_error(marker),
+    function() stop(structure(list(message = marker, call = NULL, category = marker),
+      class = c("notification_error", "error", "condition"))))
+  for (action in actions) {
+    output <- capture.output(status <- notification_cli(action), type = "message")
+    stopifnot(status == 1L, !any(grepl(marker, output, fixed = TRUE)), any(grepl("UNEXPECTED", output)))
+  }
+  output <- capture.output(status <- notification_cli(function() warning(marker)), type = "message")
+  stopifnot(status == 0L, !length(output))
+})
+check("Journal access, missing state, preflight, and history holds have distinct safe categories", {
+  category <- function(code) tryCatch({ force(code); stop("Expected categorized failure") },
+    notification_error = function(error) error$category)
+  api <- fake_github(); absent <- github_notification_store(sha(1), "example/example", request = api$request)
+  stopifnot(category(absent$load()) == "JOURNAL_MISSING")
+  denied <- github_notification_store(sha(1), "example/example", request = function(...) list(status = 403L))
+  stopifnot(category(denied$load()) == "JOURNAL_ACCESS_DENIED")
+  store <- memory_store()
+  stopifnot(category(process(store, deliver = function(...) stop("PRIVATE-PREFLIGHT"))) == "SMTP_PREFLIGHT_FAILED")
+  store$env$state$review <- list(reason = "invalid_reading_metadata", commit = sha(2))
+  stopifnot(category(process(store)) == "HISTORY_REVIEW")
+})
 cat(count, "notification-journal checks passed with mocked GitHub and SMTP only.\n")
