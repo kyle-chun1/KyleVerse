@@ -16,11 +16,34 @@ deleted when rejected or when you leave a book. The six previously active Isaiah
 entries retain `existing-active-collection` provenance; this migration does not
 claim a new personal review. Future imports always start unapproved.
 
-New R tools require `jsonlite`; email additionally uses `curl`:
+New R tools require `jsonlite`; email additionally uses `curl`. Install the
+tested versions with R 4.6.2:
 
-```r
-install.packages(c("jsonlite", "curl"))
+```sh
+Rscript scripts/install_dependencies.R
 ```
+
+All four workflows use R **4.6.2** and the public Posit CRAN snapshot
+`https://packagemanager.posit.co/cran/2026-11-12`, which provides `jsonlite`
+**2.0.0** and `curl` **8.1.0**. The shared installer checks the R version and
+installed package versions, uses source packages consistently, and never falls
+back to a moving repository. Source installation requires a C compiler and
+libcurl development headers. Each Ubuntu workflow explicitly installs
+`libcurl4-openssl-dev` and `pkg-config` before the shared R dependency installer;
+the runner's curl command or runtime library alone does not provide the headers.
+PR validation and publication retain Python **3.12** and Quarto **1.11.9**.
+Python uses only the standard library and system timezone data; no pip packages
+or dependency lockfiles are needed.
+
+To update dependencies, first verify the chosen dated snapshot's package index
+and package downloads. Update the snapshot and R version in the installer and
+the same R pin in all four workflows; update these documented versions too.
+Install into a clean library with the selected R release, run
+`Rscript scripts/validate.R`, and check workflow syntax before review. Keep
+Python and Quarto versions aligned between PR validation, publication, and local
+release checks. Review dependency updates separately from site-content changes.
+The runner image, action major tags, system libraries, and Python patch releases
+can still change; no generated-site or dependency caches are introduced.
 
 The examples below run from the repository root. The curation and both email
 CLIs can also be invoked by absolute script path from another directory,
