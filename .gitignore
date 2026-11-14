@@ -6,11 +6,13 @@
 .quarto/
 _site/
 
-/.quarto/
 .DS_Store
+~$*.docx
 
 # Generated ESV response and card: never commit Scripture caches or secrets.
 /_verse/
 __pycache__/
 .env
 .env.*
+
+/.quarto/
