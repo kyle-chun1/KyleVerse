@@ -41,6 +41,11 @@ jobs:
           r-version: '4.6.2'
           use-public-rspm: true
 
+      - name: Install Ubuntu build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libcurl4-openssl-dev pkg-config
+
       - name: Install curation and email packages
         run: Rscript scripts/install_dependencies.R
 

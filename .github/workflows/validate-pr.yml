@@ -29,6 +29,10 @@ jobs:
       - uses: quarto-dev/quarto-actions/setup@v2
         with:
           version: '1.11.9'
+      - name: Install Ubuntu build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libcurl4-openssl-dev pkg-config
       - name: Install existing R dependencies
         run: Rscript scripts/install_dependencies.R
       - name: Validate project

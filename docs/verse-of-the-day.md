@@ -28,7 +28,9 @@ All four workflows use R **4.6.2** and the public Posit CRAN snapshot
 **2.0.0** and `curl` **8.1.0**. The shared installer checks the R version and
 installed package versions, uses source packages consistently, and never falls
 back to a moving repository. Source installation requires a C compiler and
-libcurl development headers (already provided by the current CI environment).
+libcurl development headers. Each Ubuntu workflow explicitly installs
+`libcurl4-openssl-dev` and `pkg-config` before the shared R dependency installer;
+the runner's curl command or runtime library alone does not provide the headers.
 PR validation and publication retain Python **3.12** and Quarto **1.11.9**.
 Python uses only the standard library and system timezone data; no pip packages
 or dependency lockfiles are needed.
