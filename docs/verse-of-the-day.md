@@ -200,13 +200,17 @@ state update is retried (at most three times), never SMTP. If recording still
 fails, the durable `sending` claim remains held. Missing credentials are checked
 with an inert transport before claiming; no test mail is sent by this preflight.
 
-Unreadable metadata, missing/divergent history, discontinuous parent chains,
-and merge commits are conservatively held in the journal’s `review` record.
-Discovery stops at the last verified commit and sending pauses for history
-review. **Merge commits require reconciliation** rather than guessing which
-branch’s reading sequence reflects your intent. Preserve separate linear main
-commits for reading changes. Already uncertain attempts remain visible while
-later reliably established transitions can still be processed.
+Unreadable metadata, missing/divergent history, and discontinuous parent chains
+are held in the journal’s `review` record. A merge is allowed only when the
+first-parent book, merge result, every newly reachable side-branch commit, and
+their parent boundaries all have the same valid `current-bible-book`. Traversal
+includes nested branches and requires full Git history. Matching endpoints alone
+are insufficient: a side branch that changes books and then reverts stays held.
+Book-changing or unverifiable merges require manual reconciliation; no transition
+is invented. Keep reading changes as separate linear main commits when practical.
+Discovery stops at the last verified commit and sending pauses for history review.
+Existing holds are never automatically cleared. Already uncertain attempts remain
+visible while later reliably established transitions can still be processed.
 
 ### Activation after reviewing and publishing this implementation
 
@@ -441,3 +445,75 @@ GitHub Actions workflows are unchanged by this consolidation.
 The three R CLIs load `scripts/shared.R` directly for shared catalog validation,
 sanitized CLI handling, and SMTP delivery; they no longer source each other’s
 command implementations. No new R packages are required.
+
+## Notification failure categories
+
+The normal notification CLI logs a fixed allowlisted category instead of raw
+exceptions. `HISTORY_REVIEW` means inspect the journal's existing review record;
+`HISTORY_UNAVAILABLE` means Git history could not be read. Journal failures use
+`JOURNAL_MISSING`, `JOURNAL_INVALID`, `JOURNAL_ORIGIN_MISMATCH`,
+`JOURNAL_ACCESS_DENIED`, or `JOURNAL_REQUEST_FAILED`. Other categories are
+`CONFIGURATION_INVALID`, `STATE_CONFLICT`, `EVENT_REVIEW`,
+`SMTP_PREFLIGHT_FAILED`, `JOURNAL_FINALIZATION_FAILED`, and `DELIVERY_REVIEW`.
+Unexpected errors or unrecognized categories log only `UNEXPECTED`. Messages,
+warnings, response bodies, addresses, credentials, and email bodies from caught
+exceptions are not printed. Tests use private-data markers to verify this.
+`DELIVERY_REVIEW` does not mean inbox delivery succeeded; inspect held attempts
+without resending. The one-time email test and other CLI error handling are unchanged.
+
+## Proposed reconciliation of the harmless PR #1 merge
+
+This is a maintenance procedure for separate review, not an automatic recovery
+command. Do not use journal initialization to clear this hold. First publish the
+reviewed merge-handling code, use a trusted full-history checkout containing
+`df0c139206eb3daabdc8354a260a11ad0ce075cf`, and ensure no notification job is
+running. Perform maintenance under the same `kyleverse-reading-notifications`
+concurrency group (or temporarily pause notification runs). Any pause is a
+separately approved operational action. Use the existing `GH_TOKEN` with
+`contents: write`; no Gmail secrets or SMTP calls are needed.
+
+Prepare and inspect the following **in memory only**. The expected state head
+is the one inspected during the incident; any intervening change must stop this
+procedure and be reviewed again. Do not replace it blindly with the newest SHA.
+
+```r
+source("scripts/reading_email.R") # Defines functions; does not send mail.
+merge <- "df0c139206eb3daabdc8354a260a11ad0ce075cf"
+origin <- jsonlite::read_json("data/notification-origin.json")$baseline_sha
+store <- github_notification_store(origin, repo = "kyle-chun1/KyleVerse")
+before <- store$load() # initialize defaults to FALSE
+stopifnot(
+  before$head == "d9a1f33486298338d3e5c1e00064c47a2d33b540",
+  before$state$origin == "f373e13b8e86f6f7b34330b670cf0b8c260a43a4",
+  before$state$cursor == "fbdcc285b247b5cffa9f6baf91e0b163b65f08d5",
+  identical(before$state$review, list(
+    reason = "merge_or_discontinuous_history", commit = merge)),
+  length(before$state$events) == 0L)
+candidate <- before$state
+candidate["review"] <- list(NULL) # Retain the required JSON null field locally.
+candidate <- journal_reading_events(candidate, merge)
+validate_notification_state(candidate)
+stopifnot(is.null(candidate$review), candidate$cursor == merge,
+  identical(candidate$events, before$state$events),
+  identical(candidate$origin, before$state$origin),
+  identical(candidate$version, before$state$version))
+```
+
+Review that only `cursor` and `review` differ. The verified side commits
+`4ae4a68` and `77b2975`, the first parent, and the merge all retain Isaiah.
+After separate approval of the actual write, in the same maintenance session:
+
+```r
+saved <- store$save(before, candidate) # Atomic non-force update; never calls SMTP.
+if (is.null(saved)) stop("Journal changed; stop and re-review.")
+after <- store$load()
+stopifnot(identical(after$state, candidate), after$head == saved$head)
+```
+
+This appends a state commit while retaining the previous hold in branch history;
+it preserves the origin and all event records and creates no notification event.
+A conflict or lost API acknowledgment requires reading the actual state before
+any further action, not initialization, force-pushing, or blind retry. Keep the
+previous journal commit SHA as the audit record. Resume normal scheduling only
+after verification. No SMTP retry or notification workflow rerun is part of this
+procedure; a later scheduled run can continue from the reconciled merge.
