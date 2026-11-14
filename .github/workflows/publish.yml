@@ -38,10 +38,11 @@ jobs:
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
+          r-version: '4.6.2'
           use-public-rspm: true
 
       - name: Install curation and email packages
-        run: Rscript -e 'install.packages(c("jsonlite", "curl")); stopifnot(requireNamespace("jsonlite"), requireNamespace("curl"))'
+        run: Rscript scripts/install_dependencies.R
 
       - name: Validate curation and test the review workflow
         run: |
