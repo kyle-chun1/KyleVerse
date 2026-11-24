@@ -130,6 +130,37 @@ class VerseTests(unittest.TestCase):
         payload["canonical"] = payload["passage_meta"][0]["canonical"] = "Isaiah 40:28–29"
         self.assertEqual(verse.validate_response(payload, "Isaiah 40:28-29", "Isaiah")[0], "Isaiah 40:28–29")
 
+    def test_equivalent_query_formatting_preserves_api_text_and_reference(self):
+        for query in ("Isaiah 40:28-29", "Isaiah 40:28–29"):
+            with self.subTest(query=query):
+                payload = response()
+                payload["query"] = query
+                payload["canonical"] = payload["passage_meta"][0]["canonical"] = "Isaiah 40:28–29"
+                canonical, text, _ = verse.validate_response(payload, "Isaiah 40:28-29", "Isaiah")
+                self.assertEqual(canonical, payload["canonical"])
+                self.assertIs(text, payload["passages"][0])
+                self.assertEqual(text, FIXTURE_TEXT)
+
+    def test_different_and_malformed_query_ranges_are_rejected(self):
+        queries = ("Isaiah 40:28", "Isaiah 40:28-30", "Isaiah 40:29–30", "Isaiah 41:28-29",
+                   "John 40:28-29", "Isaiah 40:28-31", "Isaiah 40:28-40:29", "", None,
+                   23040028, ["Isaiah 40:28-29"], {"reference": "Isaiah 40:28-29"})
+        for query in queries:
+            with self.subTest(query=query), self.assertRaises(verse.Unavailable):
+                payload = response()
+                payload["query"] = query
+                verse.validate_response(payload, "Isaiah 40:28-29", "Isaiah")
+
+    def test_equivalent_query_does_not_bypass_independent_validation(self):
+        for key, value in (("canonical", "Isaiah 40:29-30"),
+                           ("parsed", [[23040028, 23040030]]),
+                           ("passage_meta", []), ("passages", ["NOT SCRIPTURE: missing ESV notice"])):
+            with self.subTest(field=key), self.assertRaises(verse.Unavailable):
+                payload = response()
+                payload["query"] = "Isaiah 40:28–29"
+                payload[key] = value
+                verse.validate_response(payload, "Isaiah 40:28-29", "Isaiah")
+
     def test_invalid_api_responses_are_rejected(self):
         payloads = [None, [], {}, response()]
         payloads[-1]["parsed"] = [[23040028, 23040030]]

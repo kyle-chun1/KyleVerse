@@ -131,7 +131,11 @@ def selected_reference(book, day, root=ROOT):
 
 def validate_response(payload, reference, book):
     expected, chapter = reference_range(reference, book)
-    if not isinstance(payload, dict) or payload.get("query") != reference:
+    try:
+        query_matches = isinstance(payload, dict) and reference_range(payload.get("query"), book)[0] == expected
+    except Unavailable:
+        query_matches = False
+    if not query_matches:
         raise Unavailable("The ESV response does not match the requested query.")
     canonical = payload.get("canonical")
     if reference_range(canonical, book)[0] != expected:
