@@ -13,23 +13,6 @@ current-bible-book: "Isaiah"
 Help yourself to a slice of my life. Thank you for visiting my corner of the Internet!
 :::
 
-:::::: hero-collage
-::: {.photo-card .photo-one}
-```{=html}
-<img src="images/homepage/fade.jpeg" alt="Palm trees silhouetted against a sunset over the ocean" width="3680" height="5100">
-```
-:::
-
-::: {.photo-card .photo-two}
-```{=html}
-<img src="images/homepage/buttermilkfalls_final.jpeg" alt="Autumn foliage surrounding the cascades at Buttermilk Falls" width="3720" height="4960">
-```
-:::
-
-::: {.doodle .doodle-one}
-✿
-:::
-::::::
 ::::::::
 
 ::::::: explore-section
@@ -44,14 +27,6 @@ My technical work, personal goals, and hobbies.
 [Explore →](projects.qmd)
 :::
 
-::: {.explore-card .photography-card}
-### Photography
-
-"Photography must suggest, not insist or explain."
-
-[Explore →](photography.qmd)
-:::
-
 ::: {.explore-card .writing-card}
 ### Writing
 
@@ -61,39 +36,6 @@ A collection of blogs, short-stories, and prayers.
 :::
 ::::::
 :::::::
-
-:::::::::::: gallery-section
-## Seasons Gallery
-
-A miniature exhibition, curated for you.
-
-::::::::::: gallery-grid
-:::: {.gallery-photo .tilt-left}
-![Almost Summer](images/seasons/almost-summer.jpeg){.gallery-image}
-
-*Almost Summer*
-::::
-
-:::: {.gallery-photo .tilt-right}
-![Soft Serve](images/seasons/soft-serve.jpeg){.gallery-image}
-
-*Soft Serve*
-::::
-
-:::: {.gallery-photo .tilt-left}
-![Falliage](images/seasons/falliage.jpeg){.gallery-image}
-
-*Falliage*
-::::
-
-:::: {.gallery-photo .tilt-right}
-![A World Alone](images/seasons/a-world-alone.jpeg){.gallery-image}
-
-
-*A World Alone*
-::::
-:::::::::::
-::::::::::::
 
 ::::::: enjoying-section
 ## Currently
