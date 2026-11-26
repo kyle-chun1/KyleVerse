@@ -16,15 +16,6 @@ The full reason behind Kyle's World is honestly still a mystery, even to me. But
 Thank you for being here. Enjoy your stay!
 ::::
 
-::::: about-sidebar
-:::: about-portrait
-::: {.gallery-placeholder .gallery-sage .about-portrait-placeholder}
-Portrait of Kyle\
-Photo coming soon
-:::
-::::
-
 ::: verse-of-day-slot
 :::
-:::::
 ::::::

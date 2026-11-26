@@ -9,7 +9,6 @@
   --sage: #D7E4D1;
   --peach: #E8CFC3;
   --sand: #EAE1CE;
-  --paper: #FFFDF8;
 }
 
 body {
@@ -111,7 +110,6 @@ body:has(.hero-content) main {
   padding-top: 0 !important;
 }
 
-.gallery-sage,
 .music-card {
   background: var(--sage);
 }
@@ -244,15 +242,11 @@ body:has(.about-intro) #title-block-header {
 }
 
 body:has(.about-intro) main.content {
-  max-width: 1200px;
+  max-width: 900px;
   width: 100%;
 }
 
 .about-intro {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  align-items: start;
-  gap: clamp(2rem, 5vw, 5rem);
   padding: 3rem clamp(1rem, 3vw, 2rem) 5rem;
 }
 
@@ -261,40 +255,11 @@ body:has(.about-intro) main.content {
   margin-bottom: 1.5rem;
 }
 
-.about-portrait {
-  margin-top: 2rem;
-  background: var(--paper);
-  border: 12px solid var(--paper);
-  border-bottom-width: 40px;
-  border-radius: 3px;
-  box-shadow: 0 8px 25px rgba(80, 74, 67, 0.15);
-  transform: rotate(3deg);
-}
-
-.gallery-placeholder {
-  width: 100%;
-  aspect-ratio: 4 / 5;
-}
-
-.about-portrait-placeholder {
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  text-align: center;
-}
-
-.about-portrait-placeholder p {
-  margin: 0;
-}
-
 /* Verse of the Day */
 
-.about-sidebar {
-  min-width: 0;
-}
-
 .verse-card {
-  margin-top: 3rem;
+  max-width: 640px;
+  margin: 2.5rem auto 0;
   padding: 1.25rem;
   background: var(--peach);
   border-radius: 3px;
@@ -346,20 +311,6 @@ body:has(.about-intro) main.content {
 /* Responsive layouts */
 
 @media (max-width: 768px) {
-  .about-intro {
-    grid-template-columns: 1fr;
-  }
-
-  .verse-card {
-    max-width: 480px;
-    margin: 3rem auto 0;
-  }
-
-  .about-portrait {
-    width: min(100%, 320px);
-    margin: 0 auto;
-  }
-
   .explore-grid,
   .enjoying-grid {
     grid-template-columns: 1fr;
