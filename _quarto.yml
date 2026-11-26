@@ -5,6 +5,7 @@ project:
     - python3 scripts/verse_of_day.py render
   render:
     - "*.qmd"
+    - "!photography.qmd"
   resources:
     - "!scripts/"
     - "!tests/"
@@ -24,8 +25,6 @@ website:
         href: about.qmd
       - text: Projects
         href: projects.qmd
-      - text: Photography
-        href: photography.qmd
       - text: Writing
         href: writing.qmd
 
